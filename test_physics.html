@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APEX — Physics Sandbox</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #87CEEB; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #ui-layer { position: absolute; bottom: 20px; left: 20px; z-index: 10; font-family: monospace; color: white; background: rgba(0,0,0,0.7); padding: 20px; border-radius: 8px; font-size: 16px; }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="ui-layer">
+        <h2>PHYSICS SANDBOX</h2>
+        <div id="speedout">Speed: 0 km/h</div>
+        <div id="headingout">Heading: 0.00 rad</div>
+        <div id="posout">Pos: (0.00, 0.00, 0.00)</div>
+        <br>
+        <div>Controls: W, A, S, D, SPACE (Drift)</div>
+    </div>
+    <script type="module" src="./src/test_physics.js"></script>
+</body>
+</html>

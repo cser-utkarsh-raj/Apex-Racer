@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APEX: Open Road — Arcade Test</title>
+    <!-- Google Fonts: Press Start 2P for pure Minecraft Pixel Art Aesthetic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <!-- Import maps polyfill -->
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+            image-rendering: pixelated;
+        }
+        body, html {
+            background-color: #0b0b10;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Press Start 2P', monospace;
+            color: #ffffff;
+            user-select: none;
+            -webkit-font-smoothing: none;
+        }
+        canvas#game-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        /* Minecraft Chiseled Stone GUI Panel */
+        .mc-panel {
+            position: absolute;
+            background-color: #2b2b2e;
+            border: 4px solid #1b1b1e;
+            border-top-color: #8c8c90;
+            border-left-color: #8c8c90;
+            border-right-color: #1b1b1e;
+            border-bottom-color: #1b1b1e;
+            box-shadow: 4px 4px 0px #000000, inset -3px -3px 0px rgba(0,0,0,0.5), inset 3px 3px 0px rgba(255,255,255,0.1);
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        /* Top Car Info & Hot-Swap Banner */
+        #top-banner {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 24px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            border-color: #55ff55;
+            border-top-color: #88ff88;
+            border-left-color: #88ff88;
+            border-bottom-color: #228822;
+            border-right-color: #228822;
+        }
+        .mc-gold { color: #ffaa00; text-shadow: 2px 2px 0px #3f2a00; }
+        .mc-green { color: #55ff55; text-shadow: 2px 2px 0px #114411; }
+        .mc-cyan { color: #55ffff; text-shadow: 2px 2px 0px #114444; }
+        .mc-red { color: #ff5555; text-shadow: 2px 2px 0px #441111; }
+        .mc-purple { color: #ff55ff; text-shadow: 2px 2px 0px #441144; }
+        
+        /* Bottom Right Vibrant Speedometer Dashboard */
+        #dashboard-panel {
+            bottom: 25px;
+            right: 25px;
+            padding: 16px;
+            min-width: 260px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .speed-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+        }
+        #speed-num {
+            font-size: 38px;
+            color: #ffffff;
+            text-shadow: 3px 3px 0px #000000;
+        }
+        .speed-unit {
+            font-size: 14px;
+            color: #ffaa00;
+            text-shadow: 2px 2px 0px #000000;
+        }
+        
+        /* Pixel RPM Rev Meter Bar */
+        .rpm-container {
+            width: 100%;
+            height: 14px;
+            background: #111114;
+            border: 2px solid #000000;
+            display: flex;
+            gap: 2px;
+            padding: 2px;
+        }
+        .rpm-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #55ff55 0%, #ffaa00 65%, #ff3333 100%);
+            transition: width 0.05s ease;
+        }
+        
+        .dash-sub-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+        .gear-pill {
+            background: #111114;
+            border: 2px solid #55ffff;
+            padding: 4px 8px;
+            color: #55ffff;
+            text-shadow: 1px 1px 0px #000;
+        }
+        
+        /* Bottom Left Minimap */
+        #minimap-panel {
+            bottom: 25px;
+            left: 25px;
+            padding: 8px;
+        }
+        #minimap-canvas {
+            display: block;
+            width: 160px;
+            height: 160px;
+            background: #141418;
+            border: 2px solid #000000;
+        }
+        
+        /* Bottom Controls Bar */
+        #controls-bar {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 18px;
+            font-size: 10px;
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+        .key-btn {
+            background: #44444a;
+            border: 2px solid #888890;
+            border-bottom-color: #222226;
+            border-right-color: #222226;
+            padding: 3px 6px;
+            color: #55ffff;
+        }
+        
+        /* Developer Panel (F3) */
+        #stats-overlay {
+            top: 20px;
+            left: 20px;
+            padding: 16px;
+            font-size: 10px;
+            line-height: 1.8;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="game-canvas"></canvas>
+    
+
+    
+    <!-- Bottom Left Pixel Minimap -->
+    <div id="minimap-panel" class="mc-panel">
+        <div style="font-size: 9px; margin-bottom: 6px; color: #ffaa00; text-align: center;">GPS RADAR</div>
+        <canvas id="minimap-canvas"></canvas>
+    </div>
+    
+    <!-- Bottom Right Dashboard -->
+    <div id="dashboard-panel" class="mc-panel">
+        <div class="speed-row">
+            <span id="speed-num">0</span>
+            <span class="speed-unit">KM/H</span>
+        </div>
+        
+        <!-- RPM Bar -->
+        <div class="rpm-container">
+            <div id="rpm-bar" class="rpm-bar"></div>
+        </div>
+        
+        <div class="dash-sub-row">
+            <span id="gear-val" class="gear-pill">GEAR 1</span>
+            <span id="drift-alert" class="mc-purple" style="visibility: hidden;">DRIFT!</span>
+        </div>
+    </div>
+    
+    <!-- Bottom Controls Guide -->
+    <div id="controls-bar" class="mc-panel">
+        <span><span class="key-btn">W</span><span class="key-btn">A</span><span class="key-btn">S</span><span class="key-btn">D</span> DRIVE</span>
+        <span><span class="key-btn">SPACE</span> DRIFT</span>
+        <span><span class="key-btn">C</span> SWAP CAR</span>
+    </div>
+    
+    <!-- Developer Telemetry Panel (Toggle with F3) -->
+    <div id="stats-overlay" class="mc-panel">
+        <div class="mc-cyan" style="margin-bottom: 8px;">APEX SEED ENGINE v3.0</div>
+        <div>SEED: <span id="seed-val" class="mc-gold">847291</span></div>
+        <div>CHUNK: <span id="chunk-val" class="mc-green">0, 0</span></div>
+        <div>BIOME: <span id="biome-val" class="mc-cyan">DOWNTOWN_METROPOLIS</span></div>
+        <div>DISTRICT: <span id="dist-val" class="mc-purple">DOWNTOWN_CORE</span></div>
+        <div>ACTIVE CHUNKS: <span id="active-chunks-val" class="mc-green">9</span></div>
+        <div>FPS: <span id="fps-val" class="mc-green">0</span></div>
+        <div>DRAWS: <span id="dc-val" class="mc-red">0</span></div>
+        <div>TRIS: <span id="tri-val" class="mc-gold">0</span></div>
+        <div>COLLIDERS: <span id="build-val">0</span></div>
+    </div>
+    
+    <script type="module" src="src/test_main.js"></script>
+</body>
+</html>

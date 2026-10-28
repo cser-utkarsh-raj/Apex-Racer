@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APEX: City Ride</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <style>
+        :root {
+            --bg-dark: #080a0f;
+            --panel-bg: rgba(10, 14, 22, 0.94);
+            --primary: #00ffcc;
+            --secondary: #ff0055;
+            --gold: #ffe600;
+            --text-main: #ffffff;
+            --text-muted: #8e9bb0;
+            --border-pixel: 3px solid #000000;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            image-rendering: pixelated;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            font-family: 'Press Start 2P', monospace;
+            color: var(--text-main);
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #game-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Screen System */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s ease;
+        }
+
+        .screen.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto !important;
+        }
+
+        .screen.active * {
+            pointer-events: auto;
+        }
+
+        /* Pixel Cards & Modals */
+        .pixel-card {
+            background: var(--panel-bg);
+            border: 4px solid #1c2638;
+            box-shadow: 6px 6px 0px #000000;
+            z-index: 60;
+        }
+
+        /* Pixel Buttons */
+        .pixel-btn {
+            background: #121824;
+            color: #ffffff;
+            border: 3px solid #000000;
+            box-shadow: 4px 4px 0px #000000;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 11px;
+            padding: 14px 20px;
+            cursor: pointer !important;
+            outline: none;
+            transition: transform 0.05s, box-shadow 0.05s;
+            position: relative;
+            z-index: 100;
+            pointer-events: auto !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-transform: uppercase;
+        }
+
+        .pixel-btn:hover {
+            background: #1c2638;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px #000000;
+        }
+
+        .pixel-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #000000;
+        }
+
+        .pixel-btn-primary {
+            background: var(--primary);
+            color: #000000;
+            border-color: #000000;
+        }
+
+        .pixel-btn-primary:hover {
+            background: #33ffdd;
+            color: #000000;
+            box-shadow: 6px 6px 0px #000000;
+        }
+
+        .pixel-btn-accent {
+            background: var(--secondary);
+            color: #ffffff;
+        }
+
+        .pixel-btn-accent:hover {
+            background: #ff2a70;
+            color: #ffffff;
+        }
+
+        /* 1. MAIN MENU */
+        #main-menu-screen {
+            justify-content: space-between;
+            padding: 50px 60px;
+            background: radial-gradient(circle at center, rgba(10, 14, 22, 0.25) 0%, rgba(5, 7, 10, 0.85) 100%);
+        }
+
+        .menu-title {
+            font-size: 46px;
+            color: #ffffff;
+            text-shadow: 6px 6px 0px #000000;
+            letter-spacing: 4px;
+            margin: 0 0 10px 0;
+            line-height: 1;
+        }
+
+        .menu-title span {
+            color: var(--primary);
+        }
+
+        .menu-subtitle {
+            font-size: 11px;
+            color: var(--gold);
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0px #000000;
+        }
+
+        .menu-options {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            width: 320px;
+            margin-top: 30px;
+        }
+
+        /* 2. GARAGE SCREEN */
+        #garage-screen {
+            justify-content: space-between;
+            padding: 30px 50px;
+        }
+
+        .garage-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .garage-specs-panel {
+            position: absolute;
+            left: 50px;
+            top: 110px;
+            width: 380px;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .spec-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            margin-bottom: 4px;
+        }
+
+        .spec-bar-wrap {
+            height: 8px;
+            background: #080c14;
+            border: 2px solid #000;
+            margin-bottom: 8px;
+        }
+
+        .spec-bar-fill {
+            height: 100%;
+            background: var(--primary);
+        }
+
+        .garage-nav-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 10px;
+        }
+
+        /* 3. IN-GAME HUD */
+        #hud-screen {
+            justify-content: space-between;
+            padding: 24px;
+        }
+
+        .hud-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        #hud-minimap-wrap {
+            width: 140px;
+            height: 140px;
+            border: 4px solid #000000;
+            background: #0a0e17;
+            box-shadow: 4px 4px 0px #000000;
+        }
+
+        #minimap-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #hud-telemetry {
+            position: absolute;
+            right: 24px;
+            bottom: 24px;
+            padding: 16px 20px;
+            min-width: 160px;
+            text-align: right;
+        }
+
+        #hud-speed {
+            font-size: 36px;
+            color: #ffffff;
+            text-shadow: 3px 3px 0px #000000;
+            line-height: 1;
+        }
+
+        /* World Selection Preview Grid */
+        .world-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-top: 10px;
+        }
+
+        .world-card {
+            background: #101622;
+            border: 3px solid #000;
+            box-shadow: 4px 4px 0px #000;
+            cursor: pointer;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.08s;
+        }
+
+        .world-card:hover {
+            border-color: var(--primary);
+            transform: translate(-2px, -2px);
+        }
+
+        .world-card.active-world {
+            border-color: var(--gold);
+            background: #182236;
+        }
+
+        .world-thumb {
+            width: 100%;
+            height: 110px;
+            object-fit: cover;
+            border-bottom: 3px solid #000;
+        }
+
+        .world-info {
+            padding: 10px 12px;
+        }
+
+        .world-name {
+            font-size: 10px;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .world-desc {
+            font-size: 8px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-box {
+            background: var(--panel-bg);
+            border: 5px solid #000000;
+            box-shadow: 8px 8px 0px #000000;
+            padding: 28px;
+            width: 680px;
+            max-width: 95%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen" style="position: absolute; top:0; left:0; width:100%; height:100%; background: #080a0f; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s;">
+        <div style="font-size: 54px; color: #fff; text-shadow: 6px 6px 0px #000; letter-spacing: 4px; margin-bottom: 20px;">
+            APEX<span style="color: #00ffcc;">:</span> City Ride
+        </div>
+        <div style="font-size: 14px; color: #00ffcc; margin-bottom: 40px; animation: pulse 1.5s infinite;">
+            ASSEMBLING WORLD ENGINE...
+        </div>
+        <div style="width: 300px; height: 10px; border: 3px solid #000; background: #121824;">
+            <div id="loading-bar" style="width: 10%; height: 100%; background: #00ffcc; transition: width 0.2s;"></div>
+        </div>
+        <style>
+            @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        </style>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <!-- 1. MAIN MENU -->
+    <div id="main-menu-screen" class="screen active">
+        <div>
+            <div class="menu-title">APEX: City Ride</div>
+            <div class="menu-subtitle">ARCADE VOXEL DRIVING</div>
+        </div>
+
+        <div class="menu-options">
+            <button id="btn-freeroam" class="pixel-btn pixel-btn-primary">FREE ROAM</button>
+            <button id="btn-garage" class="pixel-btn">GARAGE</button>
+            <button id="btn-world-select" class="pixel-btn">SELECT WORLD</button>
+            <button id="btn-races" class="pixel-btn pixel-btn-accent">RACE EVENTS</button>
+            <button id="btn-settings" class="pixel-btn">SETTINGS</button>
+        </div>
+    </div>
+
+    <!-- 2. GARAGE SCREEN -->
+    <div id="garage-screen" class="screen">
+        <div class="garage-top-bar">
+            <div>
+                <div style="font-size: 9px; color: var(--primary); margin-bottom: 4px;">SHOWROOM STAGE</div>
+                <div id="garage-car-title" style="font-size: 16px; color: #fff; text-shadow: 2px 2px 0px #000;">FERRARI LAFERRARI</div>
+                <div id="garage-car-class" style="font-size: 9px; color: var(--gold); margin-top: 4px;">HYPERCAR • $1,400,000</div>
+            </div>
+            <button id="btn-garage-close" class="pixel-btn">MAIN MENU</button>
+        </div>
+
+        <!-- Specs Panel -->
+        <div class="pixel-card garage-specs-panel">
+            <div style="font-size: 9px; color: var(--primary); border-bottom: 2px solid #000; padding-bottom: 6px;">MECHANICAL DATA</div>
+            
+            <div style="font-size: 8px; line-height: 1.7; color: #d0d7de;">
+                <div><strong style="color: #fff;">ENGINE:</strong> <span id="feat-engine">6.3L V12 HY-KERS</span></div>
+                <div><strong style="color: #fff;">DRIVE:</strong> <span id="feat-drive">RWD</span></div>
+                <div><strong style="color: #fff;">PWR:</strong> <span id="feat-hp" style="color: var(--gold);">950 HP</span></div>
+                <div><strong style="color: #fff;">TRANS:</strong> <span id="feat-trans">7-SPD DCT</span></div>
+            </div>
+
+            <div>
+                <div class="spec-row"><span>TOP SPEED</span><span id="stat-val-speed" style="color: var(--primary);">350 km/h</span></div>
+                <div class="spec-bar-wrap"><div id="stat-bar-speed" class="spec-bar-fill" style="width: 100%;"></div></div>
+
+                <div class="spec-row"><span>ACCELERATION</span><span id="stat-val-accel" style="color: var(--primary);">9.9</span></div>
+                <div class="spec-bar-wrap"><div id="stat-bar-accel" class="spec-bar-fill" style="width: 99%;"></div></div>
+
+                <div class="spec-row"><span>HANDLING</span><span id="stat-val-handle" style="color: var(--primary);">9.8</span></div>
+                <div class="spec-bar-wrap"><div id="stat-bar-handle" class="spec-bar-fill" style="width: 98%;"></div></div>
+
+                <div class="spec-row"><span>DRIFT</span><span id="stat-val-drift" style="color: var(--primary);">9.1</span></div>
+                <div class="spec-bar-wrap"><div id="stat-bar-drift" class="spec-bar-fill" style="width: 91%;"></div></div>
+            </div>
+
+            <button id="btn-drive-selected" class="pixel-btn pixel-btn-primary" style="margin-top: 4px;">SELECT & DRIVE</button>
+        </div>
+
+        <div class="garage-nav-bar">
+            <button id="btn-car-prev" class="pixel-btn">&lt; PREV [A/←]</button>
+            <div style="font-size: 9px; color: var(--gold);">SWIPE / ARROW KEYS TO CYCLE</div>
+            <button id="btn-car-next" class="pixel-btn">NEXT [D/→] &gt;</button>
+        </div>
+    </div>
+
+    <!-- 3. IN-GAME HUD -->
+    <div id="hud-screen" class="screen">
+        <div id="debug-overlay" class="pixel-card" style="position: absolute; top: 120px; left: 24px; padding: 12px; font-size: 10px; color: var(--primary); display: none; line-height: 1.6; z-index: 90;">
+            <div style="color: #fff; margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 4px;">APEX WORLD DEBUG [F8]</div>
+            <div>WORLD: <span id="dbg-world" style="color: #fff;">-</span></div>
+            <div>CURRENT CHUNK: <span id="dbg-chunk" style="color: #fff;">-</span></div>
+            <div>LOADED CHUNKS: <span id="dbg-chunks" style="color: #fff;">-</span></div>
+            <div>ROAD MODULES: <span id="dbg-road-modules" style="color: #fff;">-</span></div>
+            <div>BUILDINGS: <span id="dbg-buildings" style="color: #fff;">-</span></div>
+            <div>TRAFFICCRAFT: <span id="dbg-trafficcraft" style="color: #fff;">-</span></div>
+            <div>VEGETATION: <span id="dbg-vegetation" style="color: #fff;">-</span></div>
+            <div>SOURCE MAPS USED:<br><span id="dbg-source" style="color: #fff;">-</span></div>
+        </div>
+
+        <div id="race-countdown-overlay" style="position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 54px; color: var(--primary); text-shadow: 4px 4px 0px #000; display: none; z-index: 80;">
+            3
+        </div>
+
+        <div class="hud-top-bar">
+            <div id="hud-minimap-wrap">
+                <canvas id="minimap-canvas" width="140" height="140"></canvas>
+            </div>
+
+            <div id="race-banner" class="pixel-card" style="display: none; padding: 10px 20px; text-align: center;">
+                <div id="hud-race-title" style="font-size: 9px; color: var(--primary);">METRO RUSH</div>
+                <div style="font-size: 11px; margin-top: 4px; display: flex; gap: 14px; justify-content: center;">
+                    <span id="hud-race-lap" style="color: var(--gold);">LAP 1/3</span>
+                    <span id="hud-race-timer">00:00.0</span>
+                </div>
+            </div>
+
+            <button id="btn-pause-menu" class="pixel-btn">MENU</button>
+        </div>
+
+        <div id="hud-telemetry" class="pixel-card">
+            <div id="hud-gear" style="font-size: 10px; color: var(--primary); margin-bottom: 2px;">D 1</div>
+            <div id="hud-speed">0</div>
+            <div style="font-size: 8px; color: var(--text-muted); margin-top: 2px;">KM/H</div>
+            <div style="height: 6px; width: 130px; background: #000; border: 1px solid #333; margin-top: 6px;">
+                <div id="hud-rpm-fill" style="height: 100%; width: 0%; background: var(--secondary);"></div>
+            </div>
+            <div id="hud-drift-tag" style="font-size: 8px; color: var(--gold); margin-top: 4px; visibility: hidden;">DRIFT!</div>
+        </div>
+    </div>
+
+    <!-- 4. WORLD SELECT MODAL WITH VISUAL CARDS -->
+    <div id="world-select-overlay" class="modal-overlay">
+        <div class="modal-box">
+            <div style="font-size: 14px; color: var(--primary); text-shadow: 2px 2px 0px #000;">SELECT PLAYABLE ENVIRONMENT</div>
+            
+            <div class="world-grid">
+                <!-- Neo-Tazader -->
+                <div class="world-card active-world world-pick-btn" data-world="neo_tazader">
+                    <img class="world-thumb" src="assets/images/world_neo_tazader.jpg" alt="Neo-Tazader">
+                    <div class="world-info">
+                        <div class="world-name">1. NEO-TAZADER METROPOLIS</div>
+                        <div class="world-desc">Illuminated Skyscrapers, 4-lane Highway & 2.0km Drag Strip</div>
+                    </div>
+                </div>
+
+                <!-- Curitiba -->
+                <div class="world-card world-pick-btn" data-world="curitiba">
+                    <img class="world-thumb" src="assets/images/world_curitiba.jpg" alt="Curitiba">
+                    <div class="world-info">
+                        <div class="world-name">2. CURITIBA TRANSIT CITY</div>
+                        <div class="world-desc">Urban Boulevards, City Overpasses & Dedicated Bus Corridors</div>
+                    </div>
+                </div>
+
+                <!-- Nantwich -->
+                <div class="world-card world-pick-btn" data-world="nantwich">
+                    <img class="world-thumb" src="assets/images/world_nantwich.jpg" alt="Nantwich">
+                    <div class="world-info">
+                        <div class="world-name">3. NANTWICH COUNTRYSIDE</div>
+                        <div class="world-desc">Narrow English Touge, Rolling Grass Hills & Brick Cottages</div>
+                    </div>
+                </div>
+
+                <!-- Chiang Tung -->
+                <div class="world-card world-pick-btn" data-world="chiang_tung">
+                    <img class="world-thumb" src="assets/images/world_chiang_tung.jpg" alt="Chiang Tung">
+                    <div class="world-info">
+                        <div class="world-name">4. CHIANG TUNG MOUNTAIN</div>
+                        <div class="world-desc">Cliffside Hairpins, Misty Forest Touge & Drift Elevations</div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="btn-world-close" class="pixel-btn" style="margin-top: 6px;">CLOSE</button>
+        </div>
+    </div>
+
+    <!-- 5. SETTINGS MODAL -->
+    <div id="settings-overlay" class="modal-overlay">
+        <div class="modal-box">
+            <div style="font-size: 14px; color: var(--primary);">GAME CONFIGURATION</div>
+            
+            <div>
+                <div style="font-size: 9px; color: var(--gold); margin-bottom: 8px;">AI TRAFFIC DENSITY</div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="pixel-btn setting-traffic-btn" data-traffic="OFF">OFF</button>
+                    <button class="pixel-btn setting-traffic-btn" data-traffic="LOW">LOW</button>
+                    <button class="pixel-btn setting-traffic-btn pixel-btn-primary" data-traffic="MEDIUM">MED</button>
+                    <button class="pixel-btn setting-traffic-btn" data-traffic="HIGH">HIGH</button>
+                    <button class="pixel-btn setting-traffic-btn" data-traffic="CHAOS">CHAOS</button>
+                </div>
+            </div>
+
+            <div>
+                <div style="font-size: 9px; color: var(--gold); margin-bottom: 8px;">ATMOSPHERE / TIME OF DAY</div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="pixel-btn setting-tod-btn pixel-btn-primary" data-tod="day">NOON SUN</button>
+                    <button class="pixel-btn setting-tod-btn" data-tod="sunset">GOLDEN DUSK</button>
+                    <button class="pixel-btn setting-tod-btn" data-tod="night">CYBER NIGHT</button>
+                </div>
+            </div>
+
+            <button id="btn-settings-close" class="pixel-btn pixel-btn-primary" style="margin-top: 8px;">SAVE & CLOSE</button>
+        </div>
+    </div>
+
+    <!-- 6. RACE RESULTS MODAL -->
+    <div id="results-overlay" class="modal-overlay">
+        <div class="modal-box" style="text-align: center;">
+            <div style="font-size: 16px; color: var(--gold);">RACE FINISHED!</div>
+            <div id="res-event-name" style="font-size: 10px; color: var(--primary); margin-top: 4px;">METRO RUSH</div>
+            
+            <div style="font-size: 20px; color: #fff; margin: 14px 0;" id="res-final-time">01:42.5s</div>
+
+            <div style="display: flex; justify-content: space-around; font-size: 10px; margin-bottom: 14px;">
+                <div>CASH: <span id="res-cash" style="color: var(--gold);">+$15,000</span></div>
+                <div>REP: <span id="res-rep" style="color: var(--primary);">+250 REP</span></div>
+            </div>
+
+            <button id="btn-res-continue" class="pixel-btn pixel-btn-primary">CLAIM & RETURN TO GARAGE</button>
+        </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>

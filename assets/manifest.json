@@ -1,0 +1,31 @@
+{
+  "tazader": {
+    "name": "Tazader City 2015",
+    "buildings": 8,
+    "voxels": 1166,
+    "structures": [
+      "Skyscraper Core",
+      "Airport Hangars",
+      "Office Towers"
+    ]
+  },
+  "curitiba": {
+    "name": "Curitiba Transit Hub",
+    "buildings": 6,
+    "voxels": 50,
+    "structures": [
+      "Quartz BRT Towers",
+      "Urban Concrete Blocks"
+    ]
+  },
+  "chiang_tung": {
+    "name": "Kingdom of Chiang Tung",
+    "buildings": 6,
+    "voxels": 1630,
+    "structures": [
+      "Mountain Pagodas",
+      "Wooden Temples",
+      "Stone Bridges"
+    ]
+  }
+}

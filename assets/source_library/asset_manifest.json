@@ -1,0 +1,36 @@
+{
+  "version": "2.0.0",
+  "sources": {
+    "tazader": {
+      "roads": 0,
+      "bridges": 0,
+      "buildings": 36,
+      "total_voxels": 9295
+    },
+    "chiang_tung": {
+      "roads": 0,
+      "bridges": 0,
+      "buildings": 954,
+      "total_voxels": 176939
+    },
+    "curitiba": {
+      "roads": 0,
+      "bridges": 0,
+      "buildings": 66,
+      "total_voxels": 5129
+    },
+    "greater_kc": {
+      "roads": 24,
+      "bridges": 18,
+      "buildings": 11,
+      "total_voxels": 9742
+    }
+  },
+  "total_modules": 1109,
+  "categories": {
+    "roads": 24,
+    "bridges": 18,
+    "buildings": 1067,
+    "landmarks": 0
+  }
+}

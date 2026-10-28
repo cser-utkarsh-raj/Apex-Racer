@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <base href="/">
+    <title>APEX world preview</title>
+    <style>
+        html, body { margin: 0; background: #000; overflow: hidden; }
+        canvas { display: block; }
+        #hud { position: fixed; left: 10px; top: 10px; color: #9fe; font: 12px monospace; z-index: 5; }
+        #err { position: fixed; left: 10px; bottom: 10px; color: #f66; font: 12px monospace; white-space: pre-wrap; z-index: 6; }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">loading…</div>
+<div id="err"></div>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { WorldAssemblerV3 } from '/src/world/WorldAssemblerV3.js';
+
+const params = new URLSearchParams(location.search);
+const worldId = params.get('world') || 'neo_tazader';
+const camDist = Number(params.get('dist') ?? 26);
+const camHeight = Number(params.get('height') ?? 10);
+const ahead = Number(params.get('ahead') ?? 110);
+const zOffset = Number(params.get('z') ?? -40);
+const routeT = params.get('t') === null ? null : Number(params.get('t'));
+const lookYaw = Number(params.get('yaw') ?? 0);
+const hud = document.getElementById('hud');
+const err = document.getElementById('err');
+
+window.addEventListener('error', e => { err.textContent += `\n${e.message}`; });
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.info.autoReset = false;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.5, 4000);
+
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444455, 0.8);
+scene.add(hemiLight);
+const sunLight = new THREE.DirectionalLight(0xfff8ea, 2.3);
+sunLight.position.set(250, 450, 150);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.camera.near = 10;
+sunLight.shadow.camera.far = 900;
+sunLight.shadow.camera.left = -180;
+sunLight.shadow.camera.right = 180;
+sunLight.shadow.camera.top = 180;
+sunLight.shadow.camera.bottom = -180;
+sunLight.shadow.bias = -0.0005;
+scene.add(sunLight);
+scene.add(sunLight.target);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.6, 0.85);
+composer.addPass(bloomPass);
+
+const game = {
+    scene,
+    camera,
+    renderer,
+    composer,
+    bloomPass,
+    hemiLight,
+    sunLight,
+    physics: { x: 0, y: 0, z: 0, angle: 0, vx: 0, vz: 0, speed: 0 },
+    currentWorldId: worldId,
+    audioEngine: null
+};
+scene.add(sunLight.target);
+
+const world = new WorldAssemblerV3(game);
+window.world = world;
+
+try {
+    const ok = await world.loadWorld(worldId);
+    if (!ok) throw new Error('loadWorld failed');
+    const spawn = world.getSpawnPoint();
+    const route = world.route;
+    // t=0 is the spawn gate, t=1 the far end of the circuit.
+    const z = routeT === null
+        ? spawn.z + zOffset
+        : route.zMax - (route.zMax - route.zMin) * Math.max(0, Math.min(1, routeT));
+
+    game.physics.z = z;
+    game.physics.x = world.getRoadBounds(z).centerX;
+    game.physics.y = world.getTrackHeight(game.physics.x, z);
+    game.physics.angle = spawn.angle;
+
+    for (let i = 0; i < 6; i++) world.update(0.016, z);
+
+    // Match the in-game chase camera: look just above the road a short way
+    // ahead, not at the horizon, so screenshots judge the real driving view.
+    const lookDist = Math.min(ahead, 26);
+    const centre = route.atZ(z - lookDist);
+    const heading = route.headingAt(z);
+    const fx = -Math.sin(heading + lookYaw);
+    const fz = -Math.cos(heading + lookYaw);
+    const base = route.atZ(z);
+
+    camera.position.set(base.x - fx * camDist, base.y + camHeight, z - fz * camDist);
+    camera.lookAt(centre.x, centre.y + 1.1, z - lookDist);
+    sunLight.position.set(camera.position.x + 160, camera.position.y + 320, camera.position.z + 140);
+    sunLight.target.position.set(camera.position.x, camera.position.y, camera.position.z);
+    sunLight.target.updateMatrixWorld();
+
+    // Let the remaining ring stream in while the preview is settling.
+    for (let i = 0; i < 40; i++) world.update(0.016, z);
+
+    let frames = 0;
+    function frame() {
+        renderer.info.reset();
+        world.update(0.016, z);
+        composer.render();
+        frames++;
+        hud.textContent =
+            `${worldId}  tiles ${world.stats.loadedChunks}  roads ${world.roads.length}  ` +
+            `buildings ${world.buildings.length}  calls ${renderer.info.render.calls}  ` +
+            `route ${route.length.toFixed(0)}m  spawn z=${spawn.z.toFixed(0)}`;
+        if (frames === 3) window.__ready = true;
+        requestAnimationFrame(frame);
+    }
+    frame();
+} catch (e) {
+    err.textContent += `\n${e && e.stack ? e.stack : e}`;
+    hud.textContent = 'error';
+    window.__ready = true;
+}
+</script>
+</body>
+</html>

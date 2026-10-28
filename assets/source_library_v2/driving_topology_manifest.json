@@ -1,0 +1,66 @@
+{
+  "version": "2.1.0",
+  "sources": {
+    "greater_kc": {
+      "straight_roads": 0,
+      "curves": 0,
+      "intersections": 0,
+      "t_junctions": 0,
+      "highways": 0,
+      "ramps_elevated": 66,
+      "bridges_overpasses": 3,
+      "mountain_touge": 0,
+      "building_shells": 52,
+      "total_voxels": 44067
+    },
+    "tazader": {
+      "straight_roads": 0,
+      "curves": 0,
+      "intersections": 0,
+      "t_junctions": 0,
+      "highways": 0,
+      "ramps_elevated": 0,
+      "bridges_overpasses": 0,
+      "mountain_touge": 0,
+      "building_shells": 0,
+      "total_voxels": 0
+    },
+    "chiang_tung": {
+      "straight_roads": 15,
+      "curves": 10,
+      "intersections": 4,
+      "t_junctions": 0,
+      "highways": 0,
+      "ramps_elevated": 0,
+      "bridges_overpasses": 0,
+      "mountain_touge": 85,
+      "building_shells": 69,
+      "total_voxels": 9017
+    },
+    "curitiba": {
+      "straight_roads": 5,
+      "curves": 4,
+      "intersections": 2,
+      "t_junctions": 0,
+      "highways": 0,
+      "ramps_elevated": 42,
+      "bridges_overpasses": 0,
+      "mountain_touge": 0,
+      "building_shells": 26,
+      "total_voxels": 2446
+    }
+  },
+  "totals": {
+    "straight_roads": 20,
+    "curves": 14,
+    "intersections": 6,
+    "t_junctions": 0,
+    "highways": 0,
+    "ramps_elevated": 108,
+    "bridges_overpasses": 3,
+    "mountain_touge": 85,
+    "building_shells": 147,
+    "total_modules": 383,
+    "total_voxels": 55530
+  }
+}

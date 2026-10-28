@@ -1,0 +1,35 @@
+{
+  "name": "apex-open-road",
+  "version": "1.0.0",
+  "description": "APEX: Open Road - Stylized 3D Open-World Racing Game",
+  "main": "electron_main.js",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "test": "node --no-warnings --test \"tests/**/*.test.js\"",
+    "electron": "electron .",
+    "package": "electron-builder --win"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1"
+  },
+  "author": "Antigravity Dev Team",
+  "license": "MIT",
+  "build": {
+    "appId": "com.apex.openroad",
+    "productName": "APEX Open Road",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "assets/icon.ico"
+    },
+    "files": [
+      "**/*",
+      "!dist/**/*",
+      "!node_modules/**/*"
+    ]
+  }
+}

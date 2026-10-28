@@ -1,0 +1,135 @@
+{
+  "modules": [
+    {
+      "id": "tazader_skyscraper_alpha",
+      "source": "tazader",
+      "category": "building",
+      "voxels": 415,
+      "file": "assets/compiled_modules/tazader_skyscraper_alpha.json"
+    },
+    {
+      "id": "tazader_skyscraper_beta",
+      "source": "tazader",
+      "category": "building",
+      "voxels": 92,
+      "file": "assets/compiled_modules/tazader_skyscraper_beta.json"
+    },
+    {
+      "id": "tazader_office_tower",
+      "source": "tazader",
+      "category": "building",
+      "voxels": 336,
+      "file": "assets/compiled_modules/tazader_office_tower.json"
+    },
+    {
+      "id": "tazader_plaza_complex",
+      "source": "tazader",
+      "category": "building",
+      "voxels": 270,
+      "file": "assets/compiled_modules/tazader_plaza_complex.json"
+    },
+    {
+      "id": "tazader_hotel_highrise",
+      "source": "tazader",
+      "category": "building",
+      "voxels": 0,
+      "file": "assets/compiled_modules/tazader_hotel_highrise.json"
+    },
+    {
+      "id": "tazader_commercial_hub",
+      "source": "tazader",
+      "category": "building",
+      "voxels": 0,
+      "file": "assets/compiled_modules/tazader_commercial_hub.json"
+    },
+    {
+      "id": "chiang_grand_pagoda",
+      "source": "chiang_tung",
+      "category": "pagoda",
+      "voxels": 277,
+      "file": "assets/compiled_modules/chiang_grand_pagoda.json"
+    },
+    {
+      "id": "chiang_mountain_shrine",
+      "source": "chiang_tung",
+      "category": "shrine",
+      "voxels": 629,
+      "file": "assets/compiled_modules/chiang_mountain_shrine.json"
+    },
+    {
+      "id": "chiang_cliff_temple",
+      "source": "chiang_tung",
+      "category": "temple",
+      "voxels": 53,
+      "file": "assets/compiled_modules/chiang_cliff_temple.json"
+    },
+    {
+      "id": "chiang_stone_arch_bridge",
+      "source": "chiang_tung",
+      "category": "bridge",
+      "voxels": 638,
+      "file": "assets/compiled_modules/chiang_stone_arch_bridge.json"
+    },
+    {
+      "id": "chiang_bamboo_gate",
+      "source": "chiang_tung",
+      "category": "torii_gate",
+      "voxels": 22,
+      "file": "assets/compiled_modules/chiang_bamboo_gate.json"
+    },
+    {
+      "id": "curitiba_brt_tube_station",
+      "source": "curitiba",
+      "category": "transit_station",
+      "voxels": 20,
+      "file": "assets/compiled_modules/curitiba_brt_tube_station.json"
+    },
+    {
+      "id": "curitiba_quartz_apartment",
+      "source": "curitiba",
+      "category": "apartment",
+      "voxels": 0,
+      "file": "assets/compiled_modules/curitiba_quartz_apartment.json"
+    },
+    {
+      "id": "curitiba_boulevard_block",
+      "source": "curitiba",
+      "category": "commercial_block",
+      "voxels": 0,
+      "file": "assets/compiled_modules/curitiba_boulevard_block.json"
+    },
+    {
+      "id": "greater_kc_expressway_overpass",
+      "source": "greater_kc_metro",
+      "category": "highway_overpass",
+      "file": "assets/compiled_modules/greater_kc_expressway_overpass.json"
+    },
+    {
+      "id": "greater_kc_modern_tower",
+      "source": "greater_kc_metro",
+      "category": "skyscraper",
+      "file": "assets/compiled_modules/greater_kc_modern_tower.json"
+    },
+    {
+      "id": "greater_kc_commercial_plaza",
+      "source": "greater_kc_metro",
+      "category": "plaza",
+      "file": "assets/compiled_modules/greater_kc_commercial_plaza.json"
+    },
+    {
+      "id": "greater_kc_expressway_interchange",
+      "source": "greater_kc_metro",
+      "category": "highway_interchange",
+      "voxels": 2908,
+      "file": "assets/compiled_modules/greater_kc_expressway_interchange.json"
+    }
+  ],
+  "statistics": {
+    "tazader_modules": 6,
+    "curitiba_modules": 3,
+    "chiang_tung_modules": 5,
+    "total_structures": 18,
+    "total_voxels": 5660,
+    "greater_kc_modules": 1
+  }
+}
