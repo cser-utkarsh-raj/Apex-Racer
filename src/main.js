@@ -4,11 +4,14 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { VehiclePhysics } from './vehicles/VehiclePhysics.js';
 import { VehicleLoader } from './vehicles/VehicleLoader.js';
+import { mergeVehicleParts } from './vehicles/VehicleMerger.js';
 import { WorldAssemblerV3 } from './world/WorldAssemblerV3.js';
 import { TrafficSystem } from './traffic/TrafficSystem.js';
 import { RaceManager } from './race/RaceManager.js';
 import { GarageUI } from './ui/GarageUI.js';
 import { AudioEngine } from './audio/AudioEngine.js';
+import { TouchControls, detectTouch } from './ui/TouchControls.js';
+import { registerWhenReady, warmRuntimeCache } from './pwa.js';
 
 class ApexGame {
     constructor() {
@@ -40,6 +43,18 @@ class ApexGame {
         this.minimapCanvas = null;
         this.minimapCtx = null;
         this.touchStartX = 0;
+
+        // Touch devices get the on-screen cockpit and a cheaper render path.
+        // `?touch=1` / `?touch=0` override detection for QA and hybrids.
+        const coarse = typeof window.matchMedia === 'function' &&
+            window.matchMedia('(pointer: coarse)').matches;
+        this.isTouch = detectTouch({
+            maxTouchPoints: (typeof navigator !== 'undefined' && navigator.maxTouchPoints) || 0,
+            coarsePointer: coarse,
+            touchEvent: typeof window !== 'undefined' && 'ontouchstart' in window,
+            search: typeof location !== 'undefined' ? location.search : ''
+        });
+        this.touchControls = null;
         
         this.init();
     }
@@ -62,11 +77,14 @@ class ApexGame {
             powerPreference: 'high-performance'
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        this.renderer.shadowMap.enabled = true;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isTouch ? 1.35 : 2));
+        this.renderer.shadowMap.enabled = !this.isTouch;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.3;
+        // Draw-call telemetry needs the whole post-processing chain, so count
+        // across all passes and reset once per frame instead of per pass.
+        this.renderer.info.autoReset = false;
         
         this.camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.5, 3500);
         
@@ -119,6 +137,8 @@ class ApexGame {
         // 2. Setup UI & Keyboard
         this.setupUI();
         this.setupKeyboard();
+        this.setupTouch();
+        this.registerPwa();
         
         // 3. Subsystems
         this.trafficSystem.init();
@@ -141,7 +161,13 @@ class ApexGame {
             
             if (bar) bar.style.width = '70%';
             await this.loadVehicle(this.garageUI.getCurrentCar());
-            
+
+            // Bake the traffic models while the loading screen is still up.
+            // Building a voxel car is ~600 meshes; doing it lazily would stall
+            // a frame the first time each model spawns.
+            if (bar) bar.style.width = '85%';
+            await this.trafficSystem.prewarm();
+
             if (bar) bar.style.width = '100%';
             
             setTimeout(() => {
@@ -198,7 +224,10 @@ class ApexGame {
         );
 
         // Losing focus mid-corner used to leave throttle/steer stuck on.
-        const releaseKeys = () => { this.keys = {}; };
+        const releaseKeys = () => {
+            this.keys = {};
+            if (this.touchControls) this.touchControls.releaseAll();
+        };
         window.addEventListener('blur', releaseKeys);
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) releaseKeys();
@@ -273,14 +302,64 @@ class ApexGame {
             }
         });
         
-        window.addEventListener('resize', () => {
-            this.camera.aspect = window.innerWidth / window.innerHeight;
-            this.camera.updateProjectionMatrix();
-            this.renderer.setSize(window.innerWidth, window.innerHeight);
-            if (this.composer) {
-                this.composer.setSize(window.innerWidth, window.innerHeight);
-            }
+        window.addEventListener('resize', () => this.applyRenderScale());
+        window.addEventListener('orientationchange', () => {
+            // Mobile browsers report the old size for a frame or two, and a
+            // finger held through the rotation should not keep driving.
+            if (this.touchControls) this.touchControls.releaseAll();
+            setTimeout(() => this.applyRenderScale(), 250);
         });
+    }
+
+    /** Keep renderer, camera and post-processing in sync with the viewport. */
+    applyRenderScale() {
+        if (!this.renderer || !this.camera) return;
+        const cap = this.isTouch ? 1.35 : 2;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        if (this.composer) {
+            if (typeof this.composer.setPixelRatio === 'function') {
+                this.composer.setPixelRatio(this.renderer.getPixelRatio());
+            }
+            this.composer.setSize(window.innerWidth, window.innerHeight);
+        }
+    }
+
+    /** Mount the on-screen cockpit on phones/tablets. */
+    setupTouch() {
+        if (!this.isTouch) return;
+        document.body.classList.add('touch-mode');
+        const root = document.getElementById('touch-controls');
+        if (!root) return;
+
+        this.touchControls = new TouchControls(root, {
+            onChange: () => {
+                // The first touch is also the gesture iOS needs to start audio.
+                if (this.audioEngine) {
+                    this.audioEngine.init();
+                    this.audioEngine.resumeContext();
+                }
+            }
+        }).mount();
+        this.touchControls.setVisible(this.currentScreen === 'GAME');
+    }
+
+    /** Installable PWA: no button, the browser decides when to offer it. */
+    registerPwa() {
+        registerWhenReady({ search: location.search }).then((registration) => {
+            if (!registration) return;
+            // The first visit happens before the worker controls the page, so
+            // hand it the URLs that were loaded (modules, textures, tiles) and
+            // repeat once the world has finished streaming.
+            warmRuntimeCache({ registration });
+            setTimeout(() => warmRuntimeCache({ registration }), 8000);
+        });
+    }
+
+    isTouchPressed(action) {
+        return !!(this.touchControls && this.touchControls.state[action]);
     }
     
     setupUI() {
@@ -475,6 +554,8 @@ class ApexGame {
         document.getElementById('main-menu-screen').classList.toggle('active', screen === 'MENU');
         document.getElementById('garage-screen').classList.toggle('active', screen === 'GARAGE');
         document.getElementById('hud-screen').classList.toggle('active', screen === 'GAME');
+        document.body.classList.toggle('playing', screen === 'GAME');
+        if (this.touchControls) this.touchControls.setVisible(screen === 'GAME');
         
         if (screen === 'GARAGE' || screen === 'MENU') {
             if (this.carMesh) {
@@ -602,7 +683,23 @@ class ApexGame {
                 else if (WHEEL_NAMES.rr.includes(name)) this.wheels.rr.push(child);
             }
         });
-        
+
+        // VehicleLoader builds one mesh per voxel cube (~600 draw calls for a
+        // hypercar). Bake the body into one mesh and each wheel into one mesh,
+        // keeping the wheel groups themselves so spin/steer still animates.
+        const wheelGroups = [...new Set([
+            ...this.wheels.fl, ...this.wheels.fr, ...this.wheels.rl, ...this.wheels.rr
+        ])];
+        const bodyMerge = mergeVehicleParts(this.carMesh, {
+            keepGroups: wheelGroups,
+            name: 'merged_body'
+        });
+        for (const wheel of wheelGroups) {
+            mergeVehicleParts(wheel, { name: 'merged_wheel' });
+        }
+        console.log(`[Vehicle] ${carInfo.id}: ${bodyMerge.merged} body batch(es), ` +
+            `${bodyMerge.removed} parts baked, ${wheelGroups.length} wheels kept.`);
+
         this.scene.add(this.carMesh);
         
         const specs = {
@@ -638,12 +735,16 @@ class ApexGame {
     
     loop() {
         const delta = Math.min(this.clock.getDelta(), 0.05);
+        if (this.renderer && this.renderer.info) this.renderer.info.reset();
         
         if (this.currentScreen === 'GARAGE') {
             if (this.carMesh) {
                 this.carMesh.rotation.y += delta * 0.45;
-                this.camera.position.set(0, 1.4, 5000 + 4.6);
-                this.camera.lookAt(new THREE.Vector3(0, 0.75, 5000));
+                // On phones the specs card is docked right, so pan the view to
+                // keep the rotating car visible on the left half of the screen.
+                const pan = this.isTouch && window.innerWidth > window.innerHeight ? 1.9 : 0;
+                this.camera.position.set(pan, 1.4, 5000 + 4.6);
+                this.camera.lookAt(new THREE.Vector3(pan, 0.75, 5000));
             }
         } else if (this.currentScreen === 'MENU') {
             if (this.carMesh) {
@@ -656,12 +757,12 @@ class ApexGame {
             }
         } else if (this.currentScreen === 'GAME' && this.physics && this.carMesh) {
             const controls = {
-                throttle: this.isKeyPressed('w') || this.isKeyPressed('arrowup'),
-                brake: this.isKeyPressed('s') || this.isKeyPressed('arrowdown'),
-                steerLeft: this.isKeyPressed('a') || this.isKeyPressed('arrowleft'),
-                steerRight: this.isKeyPressed('d') || this.isKeyPressed('arrowright'),
-                handbrake: this.isKeyPressed(' ') || this.isKeyPressed('space'),
-                nitro: this.isKeyPressed('shift')
+                throttle: this.isKeyPressed('w') || this.isKeyPressed('arrowup') || this.isTouchPressed('throttle'),
+                brake: this.isKeyPressed('s') || this.isKeyPressed('arrowdown') || this.isTouchPressed('brake'),
+                steerLeft: this.isKeyPressed('a') || this.isKeyPressed('arrowleft') || this.isTouchPressed('steerLeft'),
+                steerRight: this.isKeyPressed('d') || this.isKeyPressed('arrowright') || this.isTouchPressed('steerRight'),
+                handbrake: this.isKeyPressed(' ') || this.isKeyPressed('space') || this.isTouchPressed('handbrake'),
+                nitro: this.isKeyPressed('shift') || this.isTouchPressed('nitro')
             };
             
             this.physics.update(delta, controls);
@@ -752,6 +853,10 @@ class ApexGame {
         }
         
         this.composer.render();
+
+        if (this.world && this.world.stats && this.renderer && this.renderer.info) {
+            this.world.stats.drawCalls = this.renderer.info.render.calls;
+        }
 
         // Dev/QA telemetry (see the autostart hook above). The title is the
         // only output a headless `--dump-dom` run can read back.

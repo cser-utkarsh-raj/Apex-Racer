@@ -8,3 +8,5 @@ test-shot.png
 dist/
 .vscode/
 .idea/
+coverage/
+.env

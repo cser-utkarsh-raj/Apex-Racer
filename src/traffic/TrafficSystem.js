@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { mergeVehicleParts } from '../vehicles/VehicleMerger.js';
+import { TemplateCache } from './TemplateCache.js';
 
 /**
  * TrafficSystem.js — Canonical Multi-Vehicle Traffic Engine
@@ -15,10 +17,37 @@ export class TrafficSystem {
         this.maxVehicles = 8;
         
         this.modelPool = ['taxi', 'police_car', 'van', 'school_bus'];
+        // One merged copy per model type: traffic cars are static bodies, so a
+        // clone can share the baked geometry and cost a single draw call.
+        this.templates = new TemplateCache();
     }
     
     init() {
         this.setDensity(this.density);
+    }
+
+    /**
+     * Build and bake one traffic model. VehicleLoader (frozen contract) still
+     * creates every cube; merging happens afterwards, outside the loader.
+     */
+    async _buildTemplate(id) {
+        const contract = await this.game.vehicleLoader.createVehicleMesh(id);
+        const raw = contract.root || contract;
+        mergeVehicleParts(raw, { name: 'traffic_body' });
+        return raw;
+    }
+
+    /**
+     * Bake every traffic model up front (during the loading screen) so the
+     * first car of each type does not stall a frame mid-drive.
+     * @returns {Promise<number>} number of ready templates
+     */
+    async prewarm(models = this.modelPool) {
+        const ids = [...new Set(models)];
+        await Promise.all(ids.map((id) =>
+            this.templates.load(id, (key) => this._buildTemplate(key)).catch(() => null)
+        ));
+        return this.templates.size;
     }
     
     setDensity(density) {
@@ -68,8 +97,13 @@ export class TrafficSystem {
         const startZ = road.startZ + dz * t + nz * laneOffset;
         
         try {
-            const contract = await this.game.vehicleLoader.createVehicleMesh(modelId);
-            const mesh = contract.root || contract;
+            // Build + bake each model once; later spawns only clone it. This
+            // also skips the loader's per-call material/texture allocation.
+            const template = await this.templates.load(modelId, (id) => this._buildTemplate(id));
+            if (!template) return;
+
+            // Geometry + material are shared between clones.
+            const mesh = template.clone(true);
             const spawnY = this.game.mapLoader && this.game.mapLoader.getHeight
                 ? this.game.mapLoader.getHeight(startX, startZ)
                 : 0.05;

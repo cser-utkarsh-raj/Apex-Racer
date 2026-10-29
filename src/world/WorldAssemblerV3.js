@@ -596,6 +596,8 @@ export class WorldAssemblerV3 {
         }
 
         if (this.game && this.game.renderer && this.game.renderer.info) {
+            // The game loop overwrites this with the post-composer total; this
+            // keeps the value meaningful if the world is updated on its own.
             this.stats.drawCalls = this.game.renderer.info.render.calls;
         }
     }
