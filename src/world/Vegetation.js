@@ -105,9 +105,9 @@ export function buildRoadsideHedges(route, style) {
 
     if (!hedgeGeometry) {
         const parts = [
-            { geometry: shift(new THREE.IcosahedronGeometry(1.15, 1), 0, 0.85, 0), color: new THREE.Color(0x2c4f24) },
-            { geometry: shift(new THREE.IcosahedronGeometry(0.95, 1), 0.9, 0.95, 0.2), color: new THREE.Color(0x365f2b) },
-            { geometry: shift(new THREE.IcosahedronGeometry(0.9, 1), -0.85, 0.8, -0.1), color: new THREE.Color(0x27461f) }
+            { geometry: shift(new THREE.IcosahedronGeometry(1.15, 0), 0, 0.85, 0), color: new THREE.Color(0x2c4f24) },
+            { geometry: shift(new THREE.IcosahedronGeometry(0.95, 0), 0.9, 0.95, 0.2), color: new THREE.Color(0x365f2b) },
+            { geometry: shift(new THREE.IcosahedronGeometry(0.9, 0), -0.85, 0.8, -0.1), color: new THREE.Color(0x27461f) }
         ];
         hedgeGeometry = mergeParts(parts);
         hedgeMaterial = new THREE.MeshStandardMaterial({
@@ -118,14 +118,19 @@ export function buildRoadsideHedges(route, style) {
         hedgeMaterial.envMapIntensity = 0.3;
     }
 
-    const mats = [];
+    // Split the run into short chunks so the renderer can frustum-cull the
+    // three-kilometre hedge row instead of submitting every instance always.
+    const CHUNK = 240;
+    const chunks = new Map();
     let side = 1;
     for (let z = route.zMin + 4; z < route.zMax; z += spacing) {
         const s = route.atZ(z);
         const jitter = (hashCell(Math.floor(z / spacing), side, 23) - 0.5) * 1.4;
         if (hashCell(Math.floor(z / spacing), side, 29) < 0.16) { side *= -1; continue; }
         const scale = 0.8 + hashCell(Math.floor(z / spacing), side, 31) * 0.9;
-        mats.push({
+        const key = Math.floor((z - route.zMin) / CHUNK);
+        if (!chunks.has(key)) chunks.set(key, []);
+        chunks.get(key).push({
             x: s.x + side * (offset + jitter),
             y: s.y + 0.02,
             z: z + (hashCell(Math.floor(z / spacing), side, 37) - 0.5) * 1.6,
@@ -135,34 +140,40 @@ export function buildRoadsideHedges(route, style) {
         });
         side *= -1;
     }
-    if (!mats.length) return null;
+    if (!chunks.size) return null;
 
-    const mesh = new THREE.InstancedMesh(hedgeGeometry, hedgeMaterial, mats.length);
-    mesh.name = 'roadside_hedges';
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    mesh.userData.sharedGeometry = true;
-
+    const group = new THREE.Group();
+    group.name = 'roadside_hedges';
     const matrix = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const p = new THREE.Vector3();
     const scl = new THREE.Vector3();
     const col = new THREE.Color();
-    for (let i = 0; i < mats.length; i++) {
-        const m = mats[i];
-        p.set(m.x, m.y, m.z);
-        q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, m.rot);
-        scl.set(m.sx, m.sy, m.sx);
-        matrix.compose(p, q, scl);
-        mesh.setMatrixAt(i, matrix);
-        const t = 0.86 + hashCell(i, 7, 59) * 0.3;
-        col.setRGB(t * 0.92, t, t * 0.84);
-        mesh.setColorAt(i, col);
+
+    for (const [key, mats] of chunks) {
+        const mesh = new THREE.InstancedMesh(hedgeGeometry, hedgeMaterial, mats.length);
+        mesh.name = `roadside_hedges_${key}`;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.userData.sharedGeometry = true;
+
+        for (let i = 0; i < mats.length; i++) {
+            const m = mats[i];
+            p.set(m.x, m.y, m.z);
+            q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, m.rot);
+            scl.set(m.sx, m.sy, m.sx);
+            matrix.compose(p, q, scl);
+            mesh.setMatrixAt(i, matrix);
+            const t = 0.86 + hashCell(i, 7, 59) * 0.3;
+            col.setRGB(t * 0.92, t, t * 0.84);
+            mesh.setColorAt(i, col);
+        }
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+        mesh.computeBoundingSphere();
+        group.add(mesh);
     }
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    mesh.computeBoundingSphere();
-    return mesh;
+    return group;
 }
 
 function hashCell(x, z, salt = 0) {

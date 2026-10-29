@@ -279,48 +279,59 @@ export class WorldAssemblerV3 {
     }
 
     _buildRoadFurniture() {
-        const road = new THREE.Mesh(buildRoadGeometry(this.route, this.style), this.roadMaterial);
-        road.name = 'race_ribbon';
-        road.receiveShadow = true;
-        road.frustumCulled = false;
-        this.worldGroup.add(road);
+        // The old version built one 3 km mesh per system with frustum culling
+        // disabled, so the GPU submitted the entire route (and its shadow
+        // pass) every frame. Split into short chunks: only the handful around
+        // the camera survive culling.
+        const CHUNK = 320;
+        let index = 0;
+        for (let z = this.route.zMin; z < this.route.zMax; z += CHUNK) {
+            const z1 = Math.min(this.route.zMax, z + CHUNK);
+            const tag = index++;
 
-        const rails = new THREE.Mesh(buildGuardrailGeometry(this.route, this.style), this.railMaterial);
-        rails.name = 'guardrails';
-        rails.frustumCulled = false;
-        this.worldGroup.add(rails);
+            const road = new THREE.Mesh(
+                buildRoadGeometry(this.route, this.style, z, z1),
+                this.roadMaterial
+            );
+            road.name = `race_ribbon_${tag}`;
+            road.receiveShadow = true;
+            this.worldGroup.add(road);
 
-        const reflectors = new THREE.Mesh(buildGuardrailReflectors(this.route, this.style), this.lampMaterial);
-        reflectors.name = 'guardrail_reflectors';
-        reflectors.frustumCulled = false;
-        this.worldGroup.add(reflectors);
+            const rails = new THREE.Mesh(
+                buildGuardrailGeometry(this.route, this.style, z, z1),
+                this.railMaterial
+            );
+            rails.name = `guardrails_${tag}`;
+            this.worldGroup.add(rails);
 
-        const lights = buildStreetlights(this.route, this.style);
+            const reflectors = new THREE.Mesh(
+                buildGuardrailReflectors(this.route, this.style, z, z1),
+                this.lampMaterial
+            );
+            reflectors.name = `guardrail_reflectors_${tag}`;
+            this.worldGroup.add(reflectors);
+
+            const lights = buildStreetlights(this.route, this.style, z, z1);
+            const poles = new THREE.Mesh(lights.poles, this.solidMaterial);
+            poles.name = `streetlight_poles_${tag}`;
+            this.worldGroup.add(poles);
+
+            const lamps = new THREE.Mesh(lights.lamps, this.lampMaterial);
+            lamps.name = `streetlight_lamps_${tag}`;
+            this.worldGroup.add(lamps);
+
+            if (lights.pools) {
+                const pools = new THREE.Mesh(lights.pools, this.poolMaterial);
+                pools.name = `streetlight_pools_${tag}`;
+                pools.renderOrder = 2;
+                this.worldGroup.add(pools);
+            }
+        }
+
         this.streetlightCount = Math.max(0, Math.floor((this.route.length / this.style.road.streetlightSpacing)));
 
         const hedges = buildRoadsideHedges(this.route, this.style);
-        if (hedges) {
-            hedges.frustumCulled = false;
-            this.worldGroup.add(hedges);
-        }
-
-        const poles = new THREE.Mesh(lights.poles, this.solidMaterial);
-        poles.name = 'streetlight_poles';
-        poles.frustumCulled = false;
-        this.worldGroup.add(poles);
-
-        const lamps = new THREE.Mesh(lights.lamps, this.lampMaterial);
-        lamps.name = 'streetlight_lamps';
-        lamps.frustumCulled = false;
-        this.worldGroup.add(lamps);
-
-        if (lights.pools) {
-            const pools = new THREE.Mesh(lights.pools, this.poolMaterial);
-            pools.name = 'streetlight_pools';
-            pools.frustumCulled = false;
-            pools.renderOrder = 2;
-            this.worldGroup.add(pools);
-        }
+        if (hedges) this.worldGroup.add(hedges);
     }
 
     _buildWater() {
@@ -480,7 +491,7 @@ export class WorldAssemblerV3 {
             .finally(() => this._tileRequests.delete(key));
     }
 
-    _flushTileQueue(limit = 2) {
+    _flushTileQueue(limit = 1) {
         let built = 0;
         while (this._tileQueue.length > 0 && built < limit) {
             const job = this._tileQueue.shift();

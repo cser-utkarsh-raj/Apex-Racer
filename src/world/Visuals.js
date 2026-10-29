@@ -156,7 +156,7 @@ const NOISE_GLSL = /* glsl */`
     float dFbm(vec2 p) {
         float v = 0.0;
         float amp = 0.5;
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 3; i++) {
             v += amp * dNoise(p);
             p = p * 2.07 + vec2(17.3, 9.1);
             amp *= 0.5;

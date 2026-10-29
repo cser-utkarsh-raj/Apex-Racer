@@ -82,9 +82,11 @@ class ApexGame {
             powerPreference: 'high-performance'
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isTouch ? 1.35 : 2));
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isTouch ? 1.15 : 1.5));
         this.renderer.shadowMap.enabled = !this.isTouch;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.type = THREE.PCFShadowMap;
+        this.renderer.shadowMap.autoUpdate = false;
+        this.renderer.shadowMap.needsUpdate = true;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.3;
         // Draw-call telemetry needs the whole post-processing chain, so count
@@ -101,7 +103,8 @@ class ApexGame {
         // Ambient occlusion is what stops the voxel architecture from looking
         // like flat cardboard. Desktops get the full pass; phones skip it.
         this._devParams = new URLSearchParams(location.search);
-        if (!this.isTouch && this._devParams.get('ssao') !== '0') {
+        const wantsAO = this._devParams.get('ssao') === '1' || this._devParams.get('quality') === 'high';
+        if (!this.isTouch && wantsAO) {
             this.ssaoPass = new SSAOPass(this.scene, this.camera, window.innerWidth, window.innerHeight);
             this.ssaoPass.kernelRadius = 1.6;
             this.ssaoPass.minDistance = 0.002;
@@ -136,11 +139,11 @@ class ApexGame {
         this.sunLight = new THREE.DirectionalLight(0xfff8ea, 2.3);
         this.sunLight.position.set(250, 450, 150);
         this.sunLight.castShadow = true;
-        this.sunLight.shadow.mapSize.width = 2048;
-        this.sunLight.shadow.mapSize.height = 2048;
+        this.sunLight.shadow.mapSize.width = 1024;
+        this.sunLight.shadow.mapSize.height = 1024;
         this.sunLight.shadow.camera.near = 10;
         this.sunLight.shadow.camera.far = 700;
-        const d = 160;
+        const d = 140;
         this.sunLight.shadow.camera.left = -d;
         this.sunLight.shadow.camera.right = d;
         this.sunLight.shadow.camera.top = d;
@@ -364,7 +367,7 @@ class ApexGame {
     /** Keep renderer, camera and post-processing in sync with the viewport. */
     applyRenderScale() {
         if (!this.renderer || !this.camera) return;
-        const cap = this.isTouch ? 1.35 : 2;
+        const cap = this.isTouch ? 1.15 : 1.5;
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
@@ -965,6 +968,14 @@ class ApexGame {
         }
         
         if (this.gradePass) this.gradePass.uniforms.uTime.value += delta;
+
+        // Shadows follow the car, but a 1-frame-old sun position is invisible
+        // at speed. Refreshing the map every other frame halves the cost of
+        // the heaviest pass in the pipeline.
+        this._shadowFrame = (this._shadowFrame || 0) + 1;
+        if (this._shadowFrame % 2 === 0 && this.renderer.shadowMap.enabled) {
+            this.renderer.shadowMap.needsUpdate = true;
+        }
         this.composer.render();
 
         if (this.world && this.world.stats && this.renderer && this.renderer.info) {

@@ -88,7 +88,7 @@ export function buildSkyDome(style) {
             float fbm(vec2 p) {
                 float v = 0.0;
                 float amp = 0.5;
-                for (int i = 0; i < 5; i++) {
+                for (int i = 0; i < 4; i++) {
                     v += amp * valueNoise(p);
                     p = p * 2.03 + vec2(11.7, 5.3);
                     amp *= 0.5;

@@ -13,3 +13,4 @@ dist/
 tools/preview/shots/
 .chrome-test*/
 __pycache__/
+tools/preview/gallery.html

@@ -9,12 +9,14 @@ import * as THREE from 'three';
 const SAMPLE = 4;      // metres between ribbon samples
 const RAIL_STEP = 4;
 
-export function buildRoadGeometry(route, style) {
+export function buildRoadGeometry(route, style, zStart = route.zMin, zEnd = route.zMax) {
     const road = style.road;
     const half = road.width / 2;
     const edge = road.edgeColor ? new THREE.Color(road.edgeColor) : new THREE.Color(0xffffff);
     const line = new THREE.Color(road.lineColor);
     const surface = new THREE.Color().fromArray(road.roadColor);
+    const from = Math.max(route.zMin, zStart);
+    const to = Math.min(route.zMax, zEnd);
 
     const pos = [], col = [];
 
@@ -38,8 +40,8 @@ export function buildRoadGeometry(route, style) {
     };
 
     // Surface + shoulders
-    for (let z = route.zMin; z < route.zMax; z += SAMPLE) {
-        const z1 = Math.min(route.zMax, z + SAMPLE);
+    for (let z = from; z < to; z += SAMPLE) {
+        const z1 = Math.min(to, z + SAMPLE);
         strip(z, z1, -half, half, 0.02, surface);
         strip(z, z1, -half - road.shoulder, -half, 0.012, new THREE.Color(0x2a2a2a));
         strip(z, z1, half, half + road.shoulder, 0.012, new THREE.Color(0x2a2a2a));
@@ -47,25 +49,25 @@ export function buildRoadGeometry(route, style) {
 
     // Faint wheel-path polish: real asphalt is darker where tyres run.
     const wear = surface.clone().multiplyScalar(0.9);
-    for (let z = route.zMin; z < route.zMax; z += SAMPLE) {
-        const z1 = Math.min(route.zMax, z + SAMPLE);
+    for (let z = from; z < to; z += SAMPLE) {
+        const z1 = Math.min(to, z + SAMPLE);
         for (const lane of [-0.75, -0.25, 0.25, 0.75]) {
             strip(z, z1, half * lane - 0.55, half * lane + 0.55, 0.021, wear);
         }
     }
 
     // Solid edge lines
-    for (let z = route.zMin; z < route.zMax; z += SAMPLE) {
-        const z1 = Math.min(route.zMax, z + SAMPLE);
+    for (let z = from; z < to; z += SAMPLE) {
+        const z1 = Math.min(to, z + SAMPLE);
         strip(z, z1, -half + 0.28, -half + 0.44, 0.035, edge);
         strip(z, z1, half - 0.44, half - 0.28, 0.035, edge);
     }
 
     // Dashed centre + lane dividers
     const dashOn = 6, dashOff = 9;
-    for (let z = route.zMin; z < route.zMax; z += dashOn + dashOff) {
-        const z1 = Math.min(route.zMax, z + dashOn);
-        strip(z, z1, -0.16, 0.16, 0.036, line);
+    for (let z = route.zMin + Math.ceil((from - route.zMin) / (dashOn + dashOff)) * (dashOn + dashOff); z < to; z += dashOn + dashOff) {
+        const z1 = Math.min(to, z + dashOn);
+        strip(z, z1, -0.11, 0.11, 0.036, line);
         if (road.width > 18) {
             strip(z, z1, -half * 0.5 - 0.1, -half * 0.5 + 0.1, 0.034, edge);
             strip(z, z1, half * 0.5 - 0.1, half * 0.5 + 0.1, 0.034, edge);
@@ -75,11 +77,13 @@ export function buildRoadGeometry(route, style) {
     return makeGeometry(pos, col, [0, 1, 0]);
 }
 
-export function buildGuardrailGeometry(route, style) {
+export function buildGuardrailGeometry(route, style, zStart = route.zMin, zEnd = route.zMax) {
     const road = style.road;
     const offset = road.width / 2 + road.shoulder + 0.35;
     const railColour = new THREE.Color(road.railColor || 0x8b939a);
     const postColour = railColour.clone().multiplyScalar(0.72);
+    const from = Math.max(route.zMin, zStart);
+    const to = Math.min(route.zMax, zEnd);
     const pos = [], col = [];
     const rails = [{ y: 0.78, h: 0.34 }, { y: 0.36, h: 0.12 }];
 
@@ -135,8 +139,8 @@ export function buildGuardrailGeometry(route, style) {
         }
     };
 
-    for (let z = route.zMin; z < route.zMax; z += RAIL_STEP) {
-        const z1 = Math.min(route.zMax, z + RAIL_STEP);
+    for (let z = from; z < to; z += RAIL_STEP) {
+        const z1 = Math.min(to, z + RAIL_STEP);
         const a = route.atZ(z);
         const b = route.atZ(z1);
         for (const side of [-1, 1]) {
@@ -161,8 +165,10 @@ export function buildGuardrailGeometry(route, style) {
  * read as bright pinpoints day or night, which is what sells the barrier as a
  * real road instead of a fence.
  */
-export function buildGuardrailReflectors(route, style) {
+export function buildGuardrailReflectors(route, style, zStart = route.zMin, zEnd = route.zMax) {
     const road = style.road;
+    const from = Math.max(route.zMin, zStart);
+    const to = Math.min(route.zMax, zEnd);
     const offset = road.width / 2 + road.shoulder + 0.28;
     const pos = [], col = [];
     const white = new THREE.Color(0xf3f6ff);
@@ -186,7 +192,7 @@ export function buildGuardrailReflectors(route, style) {
     };
 
     let index = 0;
-    for (let z = route.zMin + 6; z < route.zMax; z += 12) {
+    for (let z = route.zMin + 6 + Math.ceil((from - route.zMin) / 12) * 12; z < to; z += 12) {
         const s = route.atZ(z);
         const c = index % 2 === 0 ? white : amber;
         for (const side of [-1, 1]) {
@@ -197,8 +203,10 @@ export function buildGuardrailReflectors(route, style) {
     return makeGeometry(pos, col, null);
 }
 
-export function buildStreetlights(route, style) {
+export function buildStreetlights(route, style, zStart = route.zMin, zEnd = route.zMax) {
     const road = style.road;
+    const from = Math.max(route.zMin, zStart);
+    const to = Math.min(route.zMax, zEnd);
     const offset = road.width / 2 + road.shoulder + 1.1;
     const spacing = road.streetlightSpacing || 40;
     const poleColour = new THREE.Color(style.night ? 0x2a2f3a : 0x4c5257);
@@ -257,7 +265,7 @@ export function buildStreetlights(route, style) {
     };
 
     let side = 1;
-    for (let z = route.zMin + 10; z < route.zMax; z += spacing) {
+    for (let z = route.zMin + 10 + Math.ceil((from - route.zMin) / spacing) * spacing; z < to; z += spacing) {
         const s = route.atZ(z);
         const x = s.x + side * offset;
         box(polePos, poleCol, x, s.y + 3.3, z, 0.16, 6.6, 0.16, poleColour);
