@@ -6,8 +6,6 @@
   "scripts": {
     "start": "python -m http.server 8000",
     "test": "node --no-warnings --test \"tests/**/*.test.js\"",
-    "pwa:icons": "node tools/make-pwa-icons.mjs",
-    "pwa:precache": "node tools/make-precache.mjs",
     "electron": "electron .",
     "package": "electron-builder --win"
   },

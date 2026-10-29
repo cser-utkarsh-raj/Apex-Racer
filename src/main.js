@@ -2,10 +2,15 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { VehiclePhysics } from './vehicles/VehiclePhysics.js';
 import { VehicleLoader } from './vehicles/VehicleLoader.js';
 import { mergeVehicleParts } from './vehicles/VehicleMerger.js';
 import { WorldAssemblerV3 } from './world/WorldAssemblerV3.js';
+import { createGradePass } from './world/PostFX.js';
 import { TrafficSystem } from './traffic/TrafficSystem.js';
 import { RaceManager } from './race/RaceManager.js';
 import { GarageUI } from './ui/GarageUI.js';
@@ -92,10 +97,37 @@ class ApexGame {
         this.composer = new EffectComposer(this.renderer);
         const renderPass = new RenderPass(this.scene, this.camera);
         this.composer.addPass(renderPass);
-        
+
+        // Ambient occlusion is what stops the voxel architecture from looking
+        // like flat cardboard. Desktops get the full pass; phones skip it.
+        this._devParams = new URLSearchParams(location.search);
+        if (!this.isTouch && this._devParams.get('ssao') !== '0') {
+            this.ssaoPass = new SSAOPass(this.scene, this.camera, window.innerWidth, window.innerHeight);
+            this.ssaoPass.kernelRadius = 1.6;
+            this.ssaoPass.minDistance = 0.002;
+            this.ssaoPass.maxDistance = 0.18;
+            this.composer.addPass(this.ssaoPass);
+        }
+
         const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.4, 0.85);
         this.composer.addPass(bloomPass);
         this.bloomPass = bloomPass;
+
+        // Tone-map / colour-space conversion must happen inside the composer,
+        // otherwise the whole frame is displayed in linear light (dark, grey
+        // and undersaturated). OutputPass is the canonical fix.
+        this.outputPass = new OutputPass();
+        this.composer.addPass(this.outputPass);
+
+        this.fxaaPass = new ShaderPass(FXAAShader);
+        this.fxaaPass.material.uniforms.resolution.value.set(
+            1 / (window.innerWidth * this.renderer.getPixelRatio()),
+            1 / (window.innerHeight * this.renderer.getPixelRatio())
+        );
+        this.composer.addPass(this.fxaaPass);
+
+        this.gradePass = createGradePass();
+        this.composer.addPass(this.gradePass);
         
         // Lighting
         this.hemiLight = new THREE.HemisphereLight(0xffffff, 0x444455, 0.8);
@@ -113,6 +145,7 @@ class ApexGame {
         this.sunLight.shadow.camera.right = d;
         this.sunLight.shadow.camera.top = d;
         this.sunLight.shadow.camera.bottom = -d;
+        this.sunLight.shadow.camera.updateProjectionMatrix();
         this.sunLight.shadow.bias = -0.0004;
         this.scene.add(this.sunLight);
         
@@ -341,6 +374,14 @@ class ApexGame {
                 this.composer.setPixelRatio(this.renderer.getPixelRatio());
             }
             this.composer.setSize(window.innerWidth, window.innerHeight);
+        }
+        if (this.ssaoPass) this.ssaoPass.setSize(window.innerWidth, window.innerHeight);
+        if (this.fxaaPass) {
+            const pr = this.renderer.getPixelRatio();
+            this.fxaaPass.material.uniforms.resolution.value.set(
+                1 / (window.innerWidth * pr),
+                1 / (window.innerHeight * pr)
+            );
         }
     }
 
@@ -923,6 +964,7 @@ class ApexGame {
             this.drawMinimap();
         }
         
+        if (this.gradePass) this.gradePass.uniforms.uTime.value += delta;
         this.composer.render();
 
         if (this.world && this.world.stats && this.renderer && this.renderer.info) {
@@ -937,7 +979,9 @@ class ApexGame {
             const kmh = p ? Math.abs(Math.round(p.speed / 0.27778)) : 0;
             document.title = `APEX|${this.currentWorldId}|${kmh}kmh|` +
                 `x${p ? p.x.toFixed(0) : '-'} z${p ? p.z.toFixed(0) : '-'} y${p ? p.y.toFixed(1) : '-'}|` +
-                `calls${s.drawCalls ?? '-'}|tiles${s.loadedChunks ?? '-'}`;
+                `calls${s.drawCalls ?? '-'}|tiles${s.loadedChunks ?? '-'}` +
+                `|touch${this.isTouch ? 1 : 0}|shadow${this.renderer?.shadowMap?.enabled ? 1 : 0}` +
+                `|ssao${this.ssaoPass ? 1 : 0}`;
         }
     }
     

@@ -8,5 +8,8 @@ test-shot.png
 dist/
 .vscode/
 .idea/
-coverage/
-.env
+
+# local visual-QA output and temporary browser profiles
+tools/preview/shots/
+.chrome-test*/
+__pycache__/

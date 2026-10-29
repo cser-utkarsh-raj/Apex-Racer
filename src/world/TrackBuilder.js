@@ -45,6 +45,15 @@ export function buildRoadGeometry(route, style) {
         strip(z, z1, half, half + road.shoulder, 0.012, new THREE.Color(0x2a2a2a));
     }
 
+    // Faint wheel-path polish: real asphalt is darker where tyres run.
+    const wear = surface.clone().multiplyScalar(0.9);
+    for (let z = route.zMin; z < route.zMax; z += SAMPLE) {
+        const z1 = Math.min(route.zMax, z + SAMPLE);
+        for (const lane of [-0.75, -0.25, 0.25, 0.75]) {
+            strip(z, z1, half * lane - 0.55, half * lane + 0.55, 0.021, wear);
+        }
+    }
+
     // Solid edge lines
     for (let z = route.zMin; z < route.zMax; z += SAMPLE) {
         const z1 = Math.min(route.zMax, z + SAMPLE);
@@ -72,7 +81,7 @@ export function buildGuardrailGeometry(route, style) {
     const railColour = new THREE.Color(road.railColor || 0x8b939a);
     const postColour = railColour.clone().multiplyScalar(0.72);
     const pos = [], col = [];
-    const rails = [{ y: 0.55, h: 0.13 }, { y: 0.95, h: 0.13 }];
+    const rails = [{ y: 0.78, h: 0.34 }, { y: 0.36, h: 0.12 }];
 
     /**
      * Box aligned with the segment it covers. An axis-aligned box stepped in
@@ -144,6 +153,47 @@ export function buildGuardrailGeometry(route, style) {
         }
     }
 
+    return makeGeometry(pos, col, null);
+}
+
+/**
+ * Retroreflective studs along the top of the guardrail. They are unlit so they
+ * read as bright pinpoints day or night, which is what sells the barrier as a
+ * real road instead of a fence.
+ */
+export function buildGuardrailReflectors(route, style) {
+    const road = style.road;
+    const offset = road.width / 2 + road.shoulder + 0.28;
+    const pos = [], col = [];
+    const white = new THREE.Color(0xf3f6ff);
+    const amber = new THREE.Color(0xffb63c);
+
+    const box = (cx, cy, cz, sx, sy, sz, c) => {
+        const x0 = cx - sx / 2, x1 = cx + sx / 2;
+        const y0 = cy - sy / 2, y1 = cy + sy / 2;
+        const z0 = cz - sz / 2, z1 = cz + sz / 2;
+        const faces = [
+            [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]],
+            [[x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]],
+            [[x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]],
+            [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]],
+            [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]]
+        ];
+        for (const [a, b, c2, d] of faces) {
+            pos.push(...a, ...b, ...c2, ...a, ...c2, ...d);
+            for (let i = 0; i < 6; i++) col.push(c.r, c.g, c.b);
+        }
+    };
+
+    let index = 0;
+    for (let z = route.zMin + 6; z < route.zMax; z += 12) {
+        const s = route.atZ(z);
+        const c = index % 2 === 0 ? white : amber;
+        for (const side of [-1, 1]) {
+            box(s.x + side * offset, s.y + 0.92, z, 0.16, 0.12, 0.12, c);
+        }
+        index++;
+    }
     return makeGeometry(pos, col, null);
 }
 

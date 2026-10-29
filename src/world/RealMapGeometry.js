@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { hexToRgb } from './RealMap.js';
+import { SURFACE, classifySurface } from './SurfaceIds.js';
 
 /**
  * Builds one streamed terrain tile from baked Minecraft data.
@@ -84,6 +85,12 @@ export function buildTileGeometry(tile, ctx) {
         return [p[0] * mapTint, p[1] * mapTint, p[2] * mapTint];
     };
 
+    const baseSurface = (i) => {
+        if (surfaceKind[i]) return classifySurface(0, 0, 0, surfaceKind[i]);
+        const p = palette[colour[i]] || [0.5, 0.5, 0.5];
+        return classifySurface(p[0], p[1], p[2], 0);
+    };
+
     /* ---------------- top faces (greedy along X) ---------------- */
     for (let cz = 0; cz < cols; cz++) {
         let cx = 0;
@@ -107,7 +114,8 @@ export function buildTileGeometry(tile, ctx) {
             const z0 = cz * step, z1 = (cz + 1) * step;
             lit.quad(
                 [x0, h, z1], [x1, h, z1], [x1, h, z0], [x0, h, z0],
-                [0, 1, 0], c[0] * shade, c[1] * shade, c[2] * shade
+                [0, 1, 0], c[0] * shade, c[1] * shade, c[2] * shade,
+                baseSurface(i), 0
             );
             cx += run;
         }
@@ -152,7 +160,7 @@ export function buildTileGeometry(tile, ctx) {
                         lit.quadGradient(
                             [cxw, lo, czw], [cxw, lo, czw + step],
                             [cxw, h, czw + step], [cxw, h, czw],
-                            [-1, 0, 0], bottomColour(cbase), topColour(cbase)
+                            [-1, 0, 0], bottomColour(cbase), topColour(cbase), baseSurface(i), h - lo
                         );
                         maybeWindow(glow, windows, cx, cz, [cxw, lo, czw], [-1, 0, 0], h - lo, windowColors, step);
                     }
@@ -162,7 +170,7 @@ export function buildTileGeometry(tile, ctx) {
                 lit.quadGradient(
                     [cxw, lo, czw], [cxw, lo, czw + step],
                     [cxw, h, czw + step], [cxw, h, czw],
-                    [-1, 0, 0], bottomColour(cbase), topColour(cbase)
+                    [-1, 0, 0], bottomColour(cbase), topColour(cbase), baseSurface(i), h - lo
                 );
             }
 
@@ -172,7 +180,7 @@ export function buildTileGeometry(tile, ctx) {
                 lit.quadGradient(
                     [cxw + step, lo, czw + step], [cxw + step, lo, czw],
                     [cxw + step, h, czw], [cxw + step, h, czw + step],
-                    [1, 0, 0], bottomColour(cbase), topColour(cbase)
+                    [1, 0, 0], bottomColour(cbase), topColour(cbase), baseSurface(i), h - lo
                 );
                 maybeWindow(glow, windows, cx, cz, [cxw + step, lo, czw], [1, 0, 0], h - lo, windowColors, step);
             } else if (outward === null && withSkirt && cx === cols - 1) {
@@ -180,7 +188,7 @@ export function buildTileGeometry(tile, ctx) {
                 lit.quadGradient(
                     [cxw + step, lo, czw + step], [cxw + step, lo, czw],
                     [cxw + step, h, czw], [cxw + step, h, czw + step],
-                    [1, 0, 0], bottomColour(cbase), topColour(cbase)
+                    [1, 0, 0], bottomColour(cbase), topColour(cbase), baseSurface(i), h - lo
                 );
             }
 
@@ -190,7 +198,7 @@ export function buildTileGeometry(tile, ctx) {
                 lit.quadGradient(
                     [cxw + step, lo, czw], [cxw, lo, czw],
                     [cxw, h, czw], [cxw + step, h, czw],
-                    [0, 0, -1], bottomColour(cbase), topColour(cbase)
+                    [0, 0, -1], bottomColour(cbase), topColour(cbase), baseSurface(i), h - lo
                 );
                 maybeWindow(glow, windows, cx, cz, [cxw, lo, czw], [0, 0, -1], h - lo, windowColors, step);
             } else if (back === null && withSkirt && cz === 0) {
@@ -198,7 +206,7 @@ export function buildTileGeometry(tile, ctx) {
                 lit.quadGradient(
                     [cxw + step, lo, czw], [cxw, lo, czw],
                     [cxw, h, czw], [cxw + step, h, czw],
-                    [0, 0, -1], bottomColour(cbase), topColour(cbase)
+                    [0, 0, -1], bottomColour(cbase), topColour(cbase), baseSurface(i), h - lo
                 );
             }
 
@@ -208,7 +216,7 @@ export function buildTileGeometry(tile, ctx) {
                 lit.quadGradient(
                     [cxw, lo, czw + step], [cxw + step, lo, czw + step],
                     [cxw + step, h, czw + step], [cxw, h, czw + step],
-                    [0, 0, 1], bottomColour(cbase), topColour(cbase)
+                    [0, 0, 1], bottomColour(cbase), topColour(cbase), baseSurface(i), h - lo
                 );
                 maybeWindow(glow, windows, cx, cz, [cxw, lo, czw + step], [0, 0, 1], h - lo, windowColors, step);
             } else if (front === null && withSkirt && cz === cols - 1) {
@@ -216,7 +224,7 @@ export function buildTileGeometry(tile, ctx) {
                 lit.quadGradient(
                     [cxw, lo, czw + step], [cxw + step, lo, czw + step],
                     [cxw + step, h, czw + step], [cxw, h, czw + step],
-                    [0, 0, 1], bottomColour(cbase), topColour(cbase)
+                    [0, 0, 1], bottomColour(cbase), topColour(cbase), baseSurface(i), h - lo
                 );
             }
         }
@@ -236,16 +244,20 @@ class GeoBuilder {
         this.positions = [];
         this.normals = [];
         this.colors = [];
+        this.surfaces = [];
+        this.wallHeights = [];
         this.count = 0;
     }
 
-    quad(p0, p1, p2, p3, n, r, g, b) {
+    quad(p0, p1, p2, p3, n, r, g, b, surface = 0, wallHeight = 0) {
         const P = this.positions, N = this.normals, C = this.colors;
         const verts = [p0, p1, p2, p0, p2, p3];
         for (const p of verts) {
             P.push(p[0], p[1], p[2]);
             N.push(n[0], n[1], n[2]);
             C.push(r, g, b);
+            this.surfaces.push(surface);
+            this.wallHeights.push(wallHeight);
         }
         this.count++;
     }
@@ -255,7 +267,7 @@ class GeoBuilder {
      * `bottom`, the top two `top`. Cheap way to suggest street-lamp spill
      * without extra geometry or lights.
      */
-    quadGradient(p0, p1, p2, p3, n, bottom, top) {
+    quadGradient(p0, p1, p2, p3, n, bottom, top, surface = 0, wallHeight = 0) {
         const P = this.positions, N = this.normals, C = this.colors;
         const verts = [p0, p1, p2, p0, p2, p3];
         const cols = [bottom, bottom, top, bottom, top, top];
@@ -265,6 +277,8 @@ class GeoBuilder {
             N.push(n[0], n[1], n[2]);
             const c = cols[i];
             C.push(c[0], c[1], c[2]);
+            this.surfaces.push(surface);
+            this.wallHeights.push(wallHeight);
         }
         this.count++;
     }
@@ -274,6 +288,8 @@ class GeoBuilder {
         geo.setAttribute('position', new THREE.Float32BufferAttribute(this.positions, 3));
         geo.setAttribute('normal', new THREE.Float32BufferAttribute(this.normals, 3));
         geo.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
+        geo.setAttribute('aSurface', new THREE.Float32BufferAttribute(this.surfaces, 1));
+        geo.setAttribute('aWallHeight', new THREE.Float32BufferAttribute(this.wallHeights, 1));
         geo.computeBoundingSphere();
         return geo;
     }

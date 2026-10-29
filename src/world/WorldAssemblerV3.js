@@ -3,11 +3,14 @@ import { RealMap } from './RealMap.js';
 import { buildTileGeometry } from './RealMapGeometry.js';
 import {
     buildGuardrailGeometry,
+    buildGuardrailReflectors,
     buildRoadGeometry,
     buildStreetlights
 } from './TrackBuilder.js';
 import { buildSkyDome } from './SkyDome.js';
 import { resolveWorldStyle } from './WorldStyles.js';
+import { addSurfaceDetail, applyGradeStyle, createEnvironment } from './Visuals.js';
+import { buildTileVegetation, buildRoadsideHedges } from './Vegetation.js';
 
 /**
  * WorldAssemblerV3 — APEX real-map world engine.
@@ -60,9 +63,11 @@ export class WorldAssemblerV3 {
         this._time = 0;
         this._water = null;
         this._sky = null;
+        this._envRT = null;
         this._tileQueue = [];
         this._tileRequests = new Set();
         this.streetlightCount = 0;
+        this._treeCount = 0;
         this.bloomStrength = 1.0;
 
         this.stats = {
@@ -72,8 +77,7 @@ export class WorldAssemblerV3 {
             buildings: 0,
             trafficProps: 0,
             vegetation: 0,
-            sourceMapsUsed: '-',
-            drawCalls: 0,
+            sourceMapsUsed: '-',            drawCalls: 0,
             propInstances: 0,
             tileBytes: 0
         };
@@ -85,28 +89,35 @@ export class WorldAssemblerV3 {
         });
         this.terrainMaterial = new THREE.MeshStandardMaterial({
             vertexColors: true,
-            roughness: 0.97,
-            metalness: 0.02,
+            roughness: 0.9,
+            metalness: 0.03,
             side: THREE.FrontSide,
             polygonOffset: true,
             polygonOffsetFactor: 1,
             polygonOffsetUnits: 1
         });
+        addSurfaceDetail(this.terrainMaterial, 'terrain', { detail: 0.82 });
+        this.terrainMaterial.envMapIntensity = 0.45;
+
         this.roadMaterial = new THREE.MeshStandardMaterial({
             vertexColors: true,
-            roughness: 0.86,
+            roughness: 0.72,
             metalness: 0.08,
             side: THREE.DoubleSide,
             polygonOffset: true,
             polygonOffsetFactor: -1,
             polygonOffsetUnits: -2
         });
+        addSurfaceDetail(this.roadMaterial, 'road', { detail: 0.9 });
+        this.roadMaterial.envMapIntensity = 0.85;
+
         this.railMaterial = new THREE.MeshStandardMaterial({
             vertexColors: true,
-            roughness: 0.58,
-            metalness: 0.12,
+            roughness: 0.38,
+            metalness: 0.55,
             side: THREE.DoubleSide
         });
+        this.railMaterial.envMapIntensity = 1.1;
         this.glowMaterial = new THREE.MeshBasicMaterial({
             vertexColors: true,
             toneMapped: false,
@@ -135,6 +146,12 @@ export class WorldAssemblerV3 {
             transparent: true,
             opacity: 0.88
         });
+        this.treeMaterial = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            roughness: 0.92,
+            metalness: 0.0
+        });
+        this.treeMaterial.envMapIntensity = 0.35;
     }
 
     /* ------------------------------------------------------------------ */
@@ -241,6 +258,17 @@ export class WorldAssemblerV3 {
         }
         this.bloomStrength = s.bloom.strength;
 
+        applyGradeStyle(g.gradePass, s);
+
+        // Image-based lighting generated from this world's own sky. Without
+        // it, glass, paint and metal read as flat plastic.
+        if (this._envRT) {
+            this._envRT.dispose();
+            this._envRT = null;
+        }
+        this._envRT = createEnvironment(g.renderer, s);
+        if (g.scene) g.scene.environment = this._envRT ? this._envRT.texture : null;
+
         this.waterMaterial.color.setHex(s.water.color);
         this.waterMaterial.opacity = s.water.opacity;
     }
@@ -262,8 +290,19 @@ export class WorldAssemblerV3 {
         rails.frustumCulled = false;
         this.worldGroup.add(rails);
 
+        const reflectors = new THREE.Mesh(buildGuardrailReflectors(this.route, this.style), this.lampMaterial);
+        reflectors.name = 'guardrail_reflectors';
+        reflectors.frustumCulled = false;
+        this.worldGroup.add(reflectors);
+
         const lights = buildStreetlights(this.route, this.style);
         this.streetlightCount = Math.max(0, Math.floor((this.route.length / this.style.road.streetlightSpacing)));
+
+        const hedges = buildRoadsideHedges(this.route, this.style);
+        if (hedges) {
+            hedges.frustumCulled = false;
+            this.worldGroup.add(hedges);
+        }
 
         const poles = new THREE.Mesh(lights.poles, this.solidMaterial);
         poles.name = 'streetlight_poles';
@@ -476,6 +515,7 @@ export class WorldAssemblerV3 {
             const lit = new THREE.Mesh(litGeometry, this.terrainMaterial);
             lit.name = 'terrain';
             lit.receiveShadow = true;
+            lit.castShadow = true;
             group.add(lit);
         } else {
             litGeometry.dispose();
@@ -489,7 +529,20 @@ export class WorldAssemblerV3 {
             glowGeometry.dispose();
         }
 
-        group.userData = { tx, tz, buildings: 0 };
+        const trees = buildTileVegetation(tile, {
+            manifest: this.manifest,
+            route: this.route,
+            tx, tz,
+            palette: this.map.palette,
+            style: this.style,
+            material: this.treeMaterial
+        });
+        if (trees) {
+            group.add(trees);
+            this._treeCount += trees.count;
+        }
+
+        group.userData = { tx, tz, buildings: 0, trees: trees ? trees.count : 0 };
         this.worldGroup.add(group);
         this.activeTiles.set(key, { tx, tz, group });
     }
@@ -497,6 +550,7 @@ export class WorldAssemblerV3 {
     _releaseTile(key, entry) {
         if (entry.group) {
             this.worldGroup.remove(entry.group);
+            this._treeCount = Math.max(0, this._treeCount - (entry.group.userData.trees || 0));
             this._disposeObject(entry.group);
         }
         this.activeTiles.delete(key);
@@ -507,7 +561,7 @@ export class WorldAssemblerV3 {
             if (child.isInstancedMesh && typeof child.dispose === 'function') {
                 child.dispose();
             }
-            if (child.geometry) child.geometry.dispose();
+            if (child.geometry && !child.userData.sharedGeometry) child.geometry.dispose();
         });
     }
 
@@ -541,6 +595,7 @@ export class WorldAssemblerV3 {
         this._range = null;
         this._impactCooldown = 0;
         this.streetlightCount = 0;
+        this._treeCount = 0;
     }
 
     _refreshStats() {
@@ -549,6 +604,7 @@ export class WorldAssemblerV3 {
         this.stats.buildings = this.buildings.length;
         this.stats.trafficProps = this.streetlightCount;
         this.stats.propInstances = this.streetlightCount;
+        this.stats.vegetation = this._treeCount;
         this.stats.tileBytes = this.map ? this.map.loadedBytes : 0;
     }
 
@@ -586,7 +642,7 @@ export class WorldAssemblerV3 {
         this._resolveTrackEnds();
 
         if (this._sky && this.game && this.game.camera) {
-            this._sky.update(this.game.camera);
+            this._sky.update(this.game.camera, dt);
         }
 
         if (this._water) {
