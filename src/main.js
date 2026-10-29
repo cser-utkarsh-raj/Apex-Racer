@@ -161,13 +161,12 @@ class ApexGame {
             
             if (bar) bar.style.width = '70%';
             await this.loadVehicle(this.garageUI.getCurrentCar());
-
             // Bake the traffic models while the loading screen is still up.
-            // Building a voxel car is ~600 meshes; doing it lazily would stall
-            // a frame the first time each model spawns.
             if (bar) bar.style.width = '85%';
-            await this.trafficSystem.prewarm();
-
+            if (this.trafficSystem && this.trafficSystem.prewarm) {
+                await this.trafficSystem.prewarm();
+            }
+            this.updateMenuDisplay();
             if (bar) bar.style.width = '100%';
             
             setTimeout(() => {
@@ -247,6 +246,24 @@ class ApexGame {
                 if (this.currentScreen === 'GAME') {
                     this.showScreen('MENU');
                 }
+            }
+            
+            // Main Menu Shortcuts
+            if (this.currentScreen === 'MENU') {
+                if (key === 'enter' || key === ' ') {
+                    e.preventDefault();
+                    this.showScreen('GAME');
+                    this.placeCarAtSpawn();
+                } else if (key === 'g') {
+                    this.showScreen('GARAGE');
+                    this.updateGarageDisplay();
+                } else if (key === 'w') {
+                    document.getElementById('world-select-overlay').style.display = 'flex';
+                }
+            }
+
+            if (key === 'm') {
+                this.toggleSound();
             }
             
             if (e.key === 'F8') {
@@ -363,6 +380,13 @@ class ApexGame {
     }
     
     setupUI() {
+        const soundBtn = document.getElementById('btn-sound-toggle');
+        if (soundBtn) {
+            soundBtn.addEventListener('click', () => {
+                this.toggleSound();
+            });
+        }
+        
         const freeroamBtn = document.getElementById('btn-freeroam');
         if (freeroamBtn) {
             freeroamBtn.addEventListener('click', () => {
@@ -402,6 +426,7 @@ class ApexGame {
                 this.currentWorldId = worldId;
                 document.getElementById('world-select-overlay').style.display = 'none';
                 await this.mapLoader.loadWorld(worldId);
+                this.updateMenuDisplay();
                 if (this.currentScreen === 'GAME') this.snapCarToTrack();
             });
         });
@@ -543,6 +568,48 @@ class ApexGame {
         
         document.getElementById('stat-val-drift').innerText = car.drift.toFixed(1);
         document.getElementById('stat-bar-drift').style.width = `${car.drift * 10}%`;
+        this.updateMenuDisplay();
+    }
+    
+    updateMenuDisplay() {
+        const carEl = document.getElementById('menu-current-car');
+        if (carEl && this.garageUI) {
+            const car = this.garageUI.getCurrentCar();
+            carEl.innerText = car ? car.name.toUpperCase() : 'FERRARI LAFERRARI';
+        }
+        const worldEl = document.getElementById('menu-current-world');
+        if (worldEl) {
+            const labels = {
+                neo_tazader: 'NEO-TAZADER DOWNTOWN',
+                chiang_tung: 'CHIANG TUNG PASS',
+                curitiba: 'CURITIBA COASTLINE',
+                nantwich: 'NANTWICH HIGHLANDS'
+            };
+            worldEl.innerText = labels[this.currentWorldId] || (this.currentWorldId ? this.currentWorldId.toUpperCase() : 'NEO-TAZADER');
+        }
+    }
+
+    toggleSound() {
+        if (!this.audioEngine) return;
+        const isMuted = this.audioEngine.toggleMute();
+        const icon = document.getElementById('sound-icon');
+        const text = document.getElementById('sound-text');
+        if (icon) icon.innerText = isMuted ? '🔇' : '🔊';
+        if (text) text.innerText = isMuted ? 'AUDIO: MUTED [M]' : 'AUDIO: ON [M]';
+    }
+
+    showLapBanner() {
+        this.currentLap = (this.currentLap || 1) + 1;
+        const banner = document.getElementById('race-banner');
+        if (banner) {
+            banner.style.display = 'block';
+            banner.innerText = `CIRCUIT LOOP • LAP ${this.currentLap}`;
+            setTimeout(() => {
+                if (this.currentScreen === 'GAME' && (!this.raceManager || !this.raceManager.currentEvent)) {
+                    banner.style.display = 'none';
+                }
+            }, 3000);
+        }
     }
     
     showScreen(screen) {
@@ -558,6 +625,9 @@ class ApexGame {
         if (this.touchControls) this.touchControls.setVisible(screen === 'GAME');
         
         if (screen === 'GARAGE' || screen === 'MENU') {
+            if (screen === 'MENU') {
+                this.updateMenuDisplay();
+            }
             if (this.carMesh) {
                 this.carMesh.position.set(0, 0.25, 5000);
                 this.carMesh.rotation.y = 0;
@@ -703,10 +773,11 @@ class ApexGame {
         this.scene.add(this.carMesh);
         
         const specs = {
-            topSpeed: carInfo.topSpeed,
-            acceleration: carInfo.accel * 3.0,
-            handling: carInfo.handling / 6.5,
-            driftGrip: 1.0 - (carInfo.drift / 46.0)
+            topSpeed: Math.min(270, (carInfo.topSpeed || 280) * 0.76),
+            acceleration: (carInfo.accel || 8.0) * 1.65,
+            brakeForce: 78.0,
+            handling: (carInfo.handling || 9.0) / 8.5,
+            driftGrip: 0.88 - ((carInfo.drift || 8.0) / 90.0)
         };
         
         const showroom = (this.currentScreen === 'GARAGE' || this.currentScreen === 'MENU');

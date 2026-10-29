@@ -29,6 +29,16 @@ export class AudioEngine {
         this.skidGain = null;
         
         this.currentMode = 'MENU'; // 'MENU' or 'DRIVING'
+        this.isMuted = false;
+    }
+
+    toggleMute() {
+        this.resumeContext();
+        this.isMuted = !this.isMuted;
+        if (this.masterGain && this.ctx) {
+            this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : 0.5, this.ctx.currentTime, 0.05);
+        }
+        return this.isMuted;
     }
     
     init() {

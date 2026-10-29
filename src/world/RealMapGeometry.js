@@ -133,6 +133,9 @@ export function buildTileGeometry(tile, ctx) {
     };
     const bottomColour = (c) => [c[0] * wallShade, c[1] * wallShade, c[2] * wallShade];
     const topColour = (c) => [c[0] * wallTopShade, c[1] * wallTopShade, c[2] * wallTopShade];
+    const withSkirt = ctx.skirt ?? (manifest.id !== 'unit');
+    const baseGroundY = (manifest.origin && Number.isFinite(manifest.origin.y)) ? manifest.origin.y : 0;
+
     for (let cz = 0; cz < cols; cz++) {
         for (let cx = 0; cx < cols; cx++) {
             const i = cz * cols + cx;
@@ -144,7 +147,7 @@ export function buildTileGeometry(tile, ctx) {
             const inward = get(cx - 1, cz);
             if (inward !== null && h - inward !== 0) {
                 if (h > inward) {
-                    const lo = inward === -32768 ? h - 2 : inward;
+                    const lo = inward === -32768 ? Math.min(h - 2, baseGroundY - 4) : inward;
                     if (h - lo > 0.22) {
                         lit.quadGradient(
                             [cxw, lo, czw], [cxw, lo, czw + step],
@@ -154,36 +157,67 @@ export function buildTileGeometry(tile, ctx) {
                         maybeWindow(glow, windows, cx, cz, [cxw, lo, czw], [-1, 0, 0], h - lo, windowColors, step);
                     }
                 }
+            } else if (inward === null && withSkirt && cx === 0) {
+                const lo = h - 14;
+                lit.quadGradient(
+                    [cxw, lo, czw], [cxw, lo, czw + step],
+                    [cxw, h, czw + step], [cxw, h, czw],
+                    [-1, 0, 0], bottomColour(cbase), topColour(cbase)
+                );
             }
+
             const outward = get(cx + 1, cz);
             if (outward !== null && h > outward && h - outward > 0.22) {
-                const lo = outward === -32768 ? h - 2 : outward;
+                const lo = outward === -32768 ? Math.min(h - 2, baseGroundY - 4) : outward;
                 lit.quadGradient(
                     [cxw + step, lo, czw + step], [cxw + step, lo, czw],
                     [cxw + step, h, czw], [cxw + step, h, czw + step],
                     [1, 0, 0], bottomColour(cbase), topColour(cbase)
                 );
                 maybeWindow(glow, windows, cx, cz, [cxw + step, lo, czw], [1, 0, 0], h - lo, windowColors, step);
+            } else if (outward === null && withSkirt && cx === cols - 1) {
+                const lo = h - 14;
+                lit.quadGradient(
+                    [cxw + step, lo, czw + step], [cxw + step, lo, czw],
+                    [cxw + step, h, czw], [cxw + step, h, czw + step],
+                    [1, 0, 0], bottomColour(cbase), topColour(cbase)
+                );
             }
+
             const back = get(cx, cz - 1);
             if (back !== null && h > back && h - back > 0.22) {
-                const lo = back === -32768 ? h - 2 : back;
+                const lo = back === -32768 ? Math.min(h - 2, baseGroundY - 4) : back;
                 lit.quadGradient(
                     [cxw + step, lo, czw], [cxw, lo, czw],
                     [cxw, h, czw], [cxw + step, h, czw],
                     [0, 0, -1], bottomColour(cbase), topColour(cbase)
                 );
                 maybeWindow(glow, windows, cx, cz, [cxw, lo, czw], [0, 0, -1], h - lo, windowColors, step);
+            } else if (back === null && withSkirt && cz === 0) {
+                const lo = h - 14;
+                lit.quadGradient(
+                    [cxw + step, lo, czw], [cxw, lo, czw],
+                    [cxw, h, czw], [cxw + step, h, czw],
+                    [0, 0, -1], bottomColour(cbase), topColour(cbase)
+                );
             }
+
             const front = get(cx, cz + 1);
             if (front !== null && h > front && h - front > 0.22) {
-                const lo = front === -32768 ? h - 2 : front;
+                const lo = front === -32768 ? Math.min(h - 2, baseGroundY - 4) : front;
                 lit.quadGradient(
                     [cxw, lo, czw + step], [cxw + step, lo, czw + step],
                     [cxw + step, h, czw + step], [cxw, h, czw + step],
                     [0, 0, 1], bottomColour(cbase), topColour(cbase)
                 );
                 maybeWindow(glow, windows, cx, cz, [cxw, lo, czw + step], [0, 0, 1], h - lo, windowColors, step);
+            } else if (front === null && withSkirt && cz === cols - 1) {
+                const lo = h - 14;
+                lit.quadGradient(
+                    [cxw, lo, czw + step], [cxw + step, lo, czw + step],
+                    [cxw + step, h, czw + step], [cxw, h, czw + step],
+                    [0, 0, 1], bottomColour(cbase), topColour(cbase)
+                );
             }
         }
     }

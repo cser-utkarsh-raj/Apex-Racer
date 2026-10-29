@@ -749,17 +749,48 @@
 
     <!-- 1. MAIN MENU -->
     <div id="main-menu-screen" class="screen active">
-        <div>
-            <div class="menu-title">APEX: City Ride</div>
-            <div class="menu-subtitle">ARCADE VOXEL DRIVING</div>
+        <!-- Top Bar with Branding & Audio Toggle -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+            <div>
+                <div class="menu-title">APEX <span style="color: var(--primary);">RACER</span></div>
+                <div class="menu-subtitle" style="display: flex; gap: 10px; align-items: center;">
+                    <span style="background: rgba(0,255,204,0.15); color: var(--primary); padding: 3px 8px; border: 1px solid var(--primary); font-size: 8px;">VOXEL EDITION</span>
+                    <span>NEXT-GEN HIGHWAY SIMULATOR</span>
+                </div>
+            </div>
+            <button id="btn-sound-toggle" class="pixel-btn" style="padding: 10px 16px; font-size: 9px; gap: 8px;">
+                <span id="sound-icon">🔊</span> <span id="sound-text">AUDIO: ON [M]</span>
+            </button>
         </div>
 
-        <div class="menu-options">
-            <button id="btn-freeroam" class="pixel-btn pixel-btn-primary">FREE ROAM</button>
-            <button id="btn-garage" class="pixel-btn">GARAGE</button>
-            <button id="btn-world-select" class="pixel-btn">SELECT WORLD</button>
-            <button id="btn-races" class="pixel-btn pixel-btn-accent">RACE EVENTS</button>
-            <button id="btn-settings" class="pixel-btn">SETTINGS</button>
+        <!-- Center Row: Action Menu + Live Selection Card -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; margin-top: auto; padding-bottom: 20px;">
+            <!-- Left: Primary Menu Actions -->
+            <div class="menu-options" style="margin-top: 0;">
+                <button id="btn-freeroam" class="pixel-btn pixel-btn-primary" style="font-size: 13px; padding: 18px 24px; box-shadow: 0 0 24px rgba(0, 255, 204, 0.45);">
+                    ⚡ FREE ROAM [ENTER]
+                </button>
+                <button id="btn-garage" class="pixel-btn">🏎️ GARAGE & CARS [G]</button>
+                <button id="btn-world-select" class="pixel-btn">🌍 SELECT WORLD [W]</button>
+                <button id="btn-races" class="pixel-btn pixel-btn-accent">🏆 CIRCUIT RACES</button>
+                <button id="btn-settings" class="pixel-btn">⚙️ SETTINGS</button>
+            </div>
+
+            <!-- Right: Live Active Setup Card -->
+            <div class="pixel-card" style="padding: 18px 22px; width: 340px; display: flex; flex-direction: column; gap: 12px; background: rgba(16, 22, 34, 0.88); backdrop-filter: blur(10px); border: 2px solid #2a3a54;">
+                <div style="font-size: 8px; color: var(--primary); letter-spacing: 1px; border-bottom: 1px solid #2a3a54; padding-bottom: 6px;">CURRENT SELECTION</div>
+                <div>
+                    <div style="font-size: 8px; color: var(--text-muted); margin-bottom: 2px;">ACTIVE VEHICLE:</div>
+                    <div id="menu-current-car" style="font-size: 12px; color: #fff; font-weight: bold;">FERRARI LAFERRARI</div>
+                </div>
+                <div>
+                    <div style="font-size: 8px; color: var(--text-muted); margin-bottom: 2px;">ACTIVE WORLD:</div>
+                    <div id="menu-current-world" style="font-size: 11px; color: var(--gold);">NEO-TAZADER DOWNTOWN</div>
+                </div>
+                <div style="font-size: 7.5px; color: #7f8fa6; line-height: 1.5; border-top: 1px solid #2a3a54; padding-top: 6px;">
+                    CONTROLS: [W/S] SPEED • [A/D] STEER • [SPACE] DRIFT • [SHIFT] NITRO
+                </div>
+            </div>
         </div>
     </div>
 

@@ -174,6 +174,76 @@ export class GarageUI {
                 accel: 7.2,
                 handling: 8.0,
                 drift: 7.8
+            },
+            {
+                id: 'gtv_ford_f150',
+                name: 'Ford F-150 Raptor SuperCrew',
+                class: 'Baja Trophy Truck',
+                price: 78000,
+                engine: '3.5L High-Output EcoBoost Twin-Turbo V6',
+                drivetrain: 'Torque-on-Demand 4WD',
+                power: '450 HP • 510 lb-ft',
+                trans: '10-Speed SelectShift Automatic',
+                topSpeed: 215,
+                accel: 7.9,
+                handling: 7.5,
+                drift: 8.2
+            },
+            {
+                id: 'police_car',
+                name: 'Highway Patrol V8 Interceptor',
+                class: 'Pursuit Vehicle',
+                price: 65000,
+                engine: '5.7L HEMI Pursuit V8',
+                drivetrain: 'AWD Pursuit Package',
+                power: '370 HP • 395 lb-ft',
+                trans: '8-Speed Heavy-Duty Automatic',
+                topSpeed: 245,
+                accel: 8.6,
+                handling: 8.7,
+                drift: 8.4
+            },
+            {
+                id: 'taxi',
+                name: 'Metro City Yellow Cab',
+                class: 'Urban Cruiser',
+                price: 22000,
+                engine: '2.5L Hybrid Dynamic Force I4',
+                drivetrain: 'Front-Wheel Drive (FWD)',
+                power: '208 HP • 163 lb-ft',
+                trans: 'eCVT Planetary Gearset',
+                topSpeed: 185,
+                accel: 6.8,
+                handling: 8.2,
+                drift: 7.6
+            },
+            {
+                id: 'school_bus',
+                name: 'Classic American School Bus',
+                class: 'Heavy Transit',
+                price: 85000,
+                engine: '6.7L Cummins Turbo Diesel I6',
+                drivetrain: 'Rear-Wheel Drive Dual-Dually',
+                power: '300 HP • 660 lb-ft',
+                trans: 'Allison 2500 PTS 5-Speed',
+                topSpeed: 160,
+                accel: 5.5,
+                handling: 6.0,
+                drift: 6.5
+            },
+            {
+                id: 'van',
+                name: 'Street Delivery Express Van',
+                class: 'Commercial Van',
+                price: 32000,
+                engine: '3.5L EcoBoost Twin-Turbo V6',
+                drivetrain: 'Intelligent All-Wheel Drive',
+                power: '310 HP • 400 lb-ft',
+                trans: '10-Speed Automatic',
+                topSpeed: 190,
+                accel: 7.0,
+                handling: 7.4,
+                drift: 7.9
             }
         ];
     }

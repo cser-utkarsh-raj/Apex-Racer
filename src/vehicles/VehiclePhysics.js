@@ -95,42 +95,46 @@ export class VehiclePhysics {
             }
         }
         
-        // 2. Stable Ackermann-Style Arcade Steering
+        // 2. Stable Progressive Arcade Steering
         const speedKmh = Math.abs(this.speed) / 0.27778;
         
-        // Smooth steer input accumulation
+        // Dynamic steering responsiveness: agile at parking/city speeds, smooth on highway
+        const steerSpeedFactor = Math.max(0.45, 1.0 - (speedKmh / 320) * 0.55);
+        const steerRate = 4.2 * steerSpeedFactor;
+        
+        // Smooth steer input accumulation with progressive easing
         if (controls.steerLeft) {
-            this.steerInput = Math.min(1.0, this.steerInput + 5.0 * delta);
+            this.steerInput = Math.min(1.0, this.steerInput + steerRate * delta);
         } else if (controls.steerRight) {
-            this.steerInput = Math.max(-1.0, this.steerInput - 5.0 * delta);
+            this.steerInput = Math.max(-1.0, this.steerInput - steerRate * delta);
         } else {
-            // Auto-centering return spring
-            this.steerInput = THREE.MathUtils.lerp(this.steerInput, 0, delta * 10.0);
+            // Rapid auto-centering return spring for rock-solid stability
+            this.steerInput = THREE.MathUtils.lerp(this.steerInput, 0, delta * 13.0);
             if (Math.abs(this.steerInput) < 0.001) this.steerInput = 0;
         }
         
         // Visual wheel steer (capped smaller for visual fidelity)
-        this.steerAngle = this.steerInput * 0.40;
+        this.steerAngle = this.steerInput * 0.35;
         
         // 3. Stable Yaw Rate Calculation
         const isHandbrake = controls.handbrake && speedKmh > 20;
         this.isDrifting = isHandbrake;
         
         if (Math.abs(this.speed) > 0.3) {
-            // Speed curve: gentle at very low speed, peaks at ~60 km/h, tapers above 200 km/h
-            const normalizedSpeed = Math.min(speedKmh / 60.0, 1.0);
-            const highSpeedTaper = Math.max(0.35, 1.0 - Math.pow(Math.max(0, speedKmh - 100) / 300, 1.2));
+            // Speed curve: gentle at very low speed, peaks at ~50 km/h, progressively tapers at highway speeds
+            const normalizedSpeed = Math.min(speedKmh / 45.0, 1.0);
+            const highSpeedTaper = Math.max(0.28, 1.0 - Math.pow(Math.max(0, speedKmh - 75) / 240, 1.1));
             
-            // Max turn rate: 0.8 rad/s absolute cap (≈ 46°/s) — prevents any spinning
-            const maxTurnRate = 0.8;
-            let yawRate = this.steerInput * maxTurnRate * normalizedSpeed * highSpeedTaper * Math.sign(this.speed);
+            // Base turn rate scaled by vehicle handling spec
+            const baseTurnRate = 0.72 * (this.specs.handling || 1.0);
+            let yawRate = this.steerInput * baseTurnRate * normalizedSpeed * highSpeedTaper * Math.sign(this.speed);
             
             if (this.isDrifting) {
-                yawRate *= 1.15;
+                yawRate *= 1.35;
             }
             
             // Absolute safety cap
-            yawRate = THREE.MathUtils.clamp(yawRate, -0.9, 0.9);
+            yawRate = THREE.MathUtils.clamp(yawRate, -0.85, 0.85);
             
             this.angle += yawRate * delta;
         }
@@ -142,10 +146,10 @@ export class VehiclePhysics {
         let targetVx = forwardX * this.speed;
         let targetVz = forwardZ * this.speed;
         
-        // Lateral traction & slide recovery
-        const lateralGrip = this.isDrifting ? this.specs.driftGrip : 0.95;
-        this.vx = THREE.MathUtils.lerp(this.vx, targetVx, delta * (lateralGrip * 14.0));
-        this.vz = THREE.MathUtils.lerp(this.vz, targetVz, delta * (lateralGrip * 14.0));
+        // Lateral traction & slide recovery: glued to the road when driving straight
+        const lateralGrip = this.isDrifting ? (this.specs.driftGrip || 0.82) : 0.98;
+        this.vx = THREE.MathUtils.lerp(this.vx, targetVx, delta * (lateralGrip * 16.0));
+        this.vz = THREE.MathUtils.lerp(this.vz, targetVz, delta * (lateralGrip * 16.0));
         
         // 5. Integrate Position
         this.x += this.vx * delta;

@@ -641,8 +641,8 @@ export class WorldAssemblerV3 {
         const physics = this.game ? this.game.physics : null;
         if (!physics || !this.route) return;
 
-        const zMax = this.route.zMax - 3;
-        const zMin = this.route.zMin + 3;
+        const zMax = this.route.zMax - 4;
+        const zMin = this.route.zMin + 4;
 
         if (physics.z > zMax) {
             physics.z = zMax;
@@ -650,10 +650,28 @@ export class WorldAssemblerV3 {
             if (physics.speed < 0) physics.speed = 0;
             physics.y = this.getTrackHeight(physics.x, physics.z);
         } else if (physics.z < zMin) {
-            physics.z = zMin;
-            physics.vz = Math.max(0, physics.vz);
-            if (physics.speed > 0) physics.speed = 0;
+            // Seamless Highway Loop: Wrap continuously back to track start!
+            const lateralOffset = physics.x - this.getRoadBounds(physics.z).centerX;
+            const newZ = this.route.zMax - 18;
+            const newBounds = this.getRoadBounds(newZ);
+
+            physics.z = newZ;
+            physics.x = newBounds.centerX + lateralOffset;
             physics.y = this.getTrackHeight(physics.x, physics.z);
+            physics.angle = this.route.headingAt(newZ);
+
+            if (this.game) {
+                if (this.game.carMesh) {
+                    this.game.carMesh.position.set(physics.x, physics.y, physics.z);
+                    this.game.carMesh.rotation.y = physics.angle;
+                }
+                if (typeof this.game.snapCamera === 'function') {
+                    this.game.snapCamera();
+                }
+                if (typeof this.game.showLapBanner === 'function') {
+                    this.game.showLapBanner();
+                }
+            }
         }
 
         const lat = physics.x - this.getRoadBounds(physics.z).centerX;
