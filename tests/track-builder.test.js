@@ -5,7 +5,8 @@ import './helpers/register-three.mjs';
 const {
     buildGuardrailGeometry,
     buildRoadGeometry,
-    buildStreetlights
+    buildStreetlights,
+    buildTransitPortal
 } = await import('../src/world/TrackBuilder.js');
 const { RoutePath } = await import('../src/world/RoutePath.js');
 
@@ -172,4 +173,21 @@ test('streetlight count scales with spacing', () => {
     const denseCount = buildStreetlights(route, dense).lamps.attributes.position.array.length;
     const sparseCount = buildStreetlights(route, sparse).lamps.attributes.position.array.length;
     assert.ok(denseCount > sparseCount * 2);
+});
+
+test('buildTransitPortal produces valid illuminated geometry', () => {
+    const portal = buildTransitPortal(route, style(true));
+    assert.ok(portal, 'portal geometry exists');
+    assertValidGeometry(portal, 'transit portal');
+});
+
+test('WorldAssemblerV3 imports and instantiates cleanly', async () => {
+    const { WorldAssemblerV3 } = await import('../src/world/WorldAssemblerV3.js');
+    assert.ok(WorldAssemblerV3, 'WorldAssemblerV3 class exists');
+    const mockGame = {
+        scene: { add: () => {}, remove: () => {} }
+    };
+    const assembler = new WorldAssemblerV3(mockGame);
+    assert.ok(assembler, 'assembler instantiated');
+    assert.equal(typeof assembler._buildRoadFurniture, 'function');
 });

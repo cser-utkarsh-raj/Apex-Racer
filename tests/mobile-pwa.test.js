@@ -247,7 +247,7 @@ test('the service worker loads the precache list and accepts warm messages', () 
     assert.match(sw, /readPrecacheList/);
     assert.match(sw, /type === 'WARM'/);
     assert.match(sw, /async function warm\(/);
-    assert.match(sw, /apex-v3/);
+    assert.match(sw, /apex-v4/);
 });
 
 test('collectResourceUrls only keeps real http(s) resource entries', () => {

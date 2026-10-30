@@ -47,6 +47,7 @@
   "./src/vehicles/VehiclePhysics.js",
   "./src/world/DirectMapLoader.js",
   "./src/world/Environment.js",
+  "./src/world/Landmarks.js",
   "./src/world/MapLoader.js",
   "./src/world/PostFX.js",
   "./src/world/ProceduralTrack.js",

@@ -12,6 +12,7 @@ import { buildSkyDome } from './SkyDome.js';
 import { resolveWorldStyle } from './WorldStyles.js';
 import { addSurfaceDetail, applyGradeStyle, createEnvironment } from './Visuals.js';
 import { buildTileVegetation, buildRoadsideHedges } from './Vegetation.js';
+import { buildLandmarks } from './Landmarks.js';
 
 /**
  * WorldAssemblerV3 — APEX real-map world engine.
@@ -64,6 +65,7 @@ export class WorldAssemblerV3 {
         this._time = 0;
         this._water = null;
         this._sky = null;
+        this._landmarks = null;
         this._envRT = null;
         this._tileQueue = [];
         this._tileRequests = new Set();
@@ -194,6 +196,7 @@ export class WorldAssemblerV3 {
         this._applyEnvironment();
         this._buildSky();
         this._buildRoadFurniture();
+        this._buildLandmarks();
         this._buildWater();
         this._buildEvents();
         this._buildCollision();
@@ -339,6 +342,13 @@ export class WorldAssemblerV3 {
             const portal = new THREE.Mesh(portalGeo, this.lampMaterial);
             portal.name = 'transit_portal_gate';
             this.worldGroup.add(portal);
+        }
+    }
+
+    _buildLandmarks() {
+        this._landmarks = buildLandmarks(this.route, this.style, this.manifest);
+        if (this._landmarks) {
+            this.worldGroup.add(this._landmarks.group);
         }
     }
 
@@ -604,6 +614,7 @@ export class WorldAssemblerV3 {
         }
 
         this._water = null;
+        this._landmarks = null;
         this._tileQueue.length = 0;
         this._tileRequests.clear();
         this.roads = [];
@@ -661,6 +672,10 @@ export class WorldAssemblerV3 {
 
         if (this._sky && this.game && this.game.camera) {
             this._sky.update(this.game.camera, dt);
+        }
+
+        if (this._landmarks) {
+            this._landmarks.update(dt);
         }
 
         if (this._water) {

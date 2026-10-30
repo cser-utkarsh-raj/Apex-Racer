@@ -6,7 +6,7 @@
  * used, and the page also sends the URLs it loaded so an offline relaunch of a
  * visited world works.
  */
-const VERSION = 'apex-v3';
+const VERSION = 'apex-v4';
 const SHELL_CACHE = `apex-shell-${VERSION}`;
 const RUNTIME_CACHE = `apex-runtime-${VERSION}`;
 const RUNTIME_LIMIT = 1200;
