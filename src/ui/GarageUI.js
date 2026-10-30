@@ -89,7 +89,10 @@ export class GarageUI {
                 topSpeed: 348,
                 accel: 9.7,
                 handling: 9.7,
-                drift: 8.6
+                drift: 8.6,
+                driftGrip: 0.82,
+                nitroMultiplier: 1.55,
+                brakeForce: 86
             },
             {
                 id: 'gtv_ford_mustang_shelby_gt500',
@@ -103,7 +106,10 @@ export class GarageUI {
                 topSpeed: 290,
                 accel: 9.4,
                 handling: 8.8,
-                drift: 9.6
+                drift: 9.6,
+                driftGrip: 0.74,
+                nitroMultiplier: 1.50,
+                brakeForce: 82
             },
             {
                 id: 'gtv_lamborghini_urus',
@@ -159,7 +165,10 @@ export class GarageUI {
                 topSpeed: 200,
                 accel: 7.5,
                 handling: 9.9,
-                drift: 10.0
+                drift: 10.0,
+                driftGrip: 0.70,
+                nitroMultiplier: 1.40,
+                brakeForce: 70
             },
             {
                 id: 'gtv_ford_bronco_sport',
@@ -173,7 +182,10 @@ export class GarageUI {
                 topSpeed: 195,
                 accel: 7.2,
                 handling: 8.0,
-                drift: 7.8
+                drift: 7.8,
+                driftGrip: 0.90,
+                nitroMultiplier: 1.35,
+                brakeForce: 76
             },
             {
                 id: 'gtv_ford_f150',
@@ -187,7 +199,10 @@ export class GarageUI {
                 topSpeed: 215,
                 accel: 7.9,
                 handling: 7.5,
-                drift: 8.2
+                drift: 8.2,
+                driftGrip: 0.86,
+                nitroMultiplier: 1.40,
+                brakeForce: 78
             },
             {
                 id: 'police_car',

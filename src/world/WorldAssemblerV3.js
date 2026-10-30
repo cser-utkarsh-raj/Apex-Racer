@@ -5,7 +5,8 @@ import {
     buildGuardrailGeometry,
     buildGuardrailReflectors,
     buildRoadGeometry,
-    buildStreetlights
+    buildStreetlights,
+    buildTransitPortal
 } from './TrackBuilder.js';
 import { buildSkyDome } from './SkyDome.js';
 import { resolveWorldStyle } from './WorldStyles.js';

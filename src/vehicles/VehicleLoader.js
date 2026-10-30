@@ -18,7 +18,12 @@ export class VehicleLoader {
     }
     
     getModelUrl(id) {
-        if (id === 'ae86' || id === 'ferrari_f40' || id === 'plane' || id === 'van' || id === 'police_car' || id === 'taxi') {
+        const baked = new Set([
+            'ae86', 'ferrari_f40', 'plane', 'van', 'police_car', 'taxi',
+            'gtv_ford_gt', 'gtv_ford_mustang_shelby_gt500',
+            'gtv_ford_bronco_sport', 'gtv_ford_f150'
+        ]);
+        if (baked.has(id)) {
             return `assets/processed/vehicles/models/${id}.json`;
         }
         if (id === 'school_bus') {
@@ -33,10 +38,10 @@ export class VehicleLoader {
         if (id === 'gtv_amg_gt') return 'assets/textures/gtv_amg_gt.png';
         if (id === 'gtv_amg_one') return 'assets/textures/gtv_amg_one.png';
         
-        if (id === 'gtv_ford_gt') return 'assets/textures/gtv_ford_gt.png';
-        if (id === 'gtv_ford_mustang_shelby_gt500') return 'assets/textures/gtv_shelby.png';
-        if (id === 'gtv_ford_bronco_sport') return 'assets/textures/gtv_bronco.png';
-        if (id === 'gtv_ford_f150') return 'assets/textures/gtv_f150.png';
+        if (id === 'gtv_ford_gt') return 'assets/processed/vehicles/textures/gtv_ford_gt.png';
+        if (id === 'gtv_ford_mustang_shelby_gt500') return 'assets/processed/vehicles/textures/gtv_ford_mustang_shelby_gt500.png';
+        if (id === 'gtv_ford_bronco_sport') return 'assets/processed/vehicles/textures/gtv_ford_bronco_sport.png';
+        if (id === 'gtv_ford_f150') return 'assets/processed/vehicles/textures/gtv_ford_f150.png';
         if (id === 'gtv_ford_mustang_dark_horse') return 'assets/textures/gtv_mustang.png';
         if (id.startsWith('gtv_ford_')) return 'assets/textures/gtv_mustang.png';
         
@@ -44,7 +49,7 @@ export class VehicleLoader {
         if (id.startsWith('gtv_lambo_')) return 'assets/textures/gtv_lamborghini.png';
         if (id.startsWith('gtv_ferrari_')) return 'assets/textures/gtv_ferrari.png';
         
-        if (id === 'ae86') return 'assets/processed/vehicles/textures/ae86_new_toyota_ae86.png';
+        if (id === 'ae86') return 'assets/processed/vehicles/textures/ae86.png';
         if (id === 'ferrari_f40') return 'assets/processed/vehicles/textures/ferrari_f40.png';
         if (id === 'plane') return 'assets/processed/vehicles/textures/plane.png';
         if (id === 'school_bus') return 'assets/processed/vehicles/textures/school_bus.png';
@@ -83,11 +88,89 @@ export class VehicleLoader {
         this.textureCache[id] = tex;
         return tex;
     }
+
+    /** Build a BufferGeometry from the compact arrays in a baked vehicle. */
+    geometryFromBaked(data) {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(data.position, 3));
+        if (data.normal) {
+            geo.setAttribute('normal', new THREE.Float32BufferAttribute(data.normal, 3));
+        }
+        if (data.uv) {
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(data.uv, 2));
+        }
+        if (data.index) geo.setIndex(data.index);
+        if (!data.normal) geo.computeVertexNormals();
+        geo.computeBoundingSphere();
+        geo.computeBoundingBox();
+        return geo;
+    }
+
+    /**
+     * Build a pre-baked vehicle: a single body mesh plus four wheel groups at
+     * their true pivots. This is the fast path used by the five reworked
+     * vehicles; the frozen Bedrock path above remains for the legacy lineup.
+     */
+    createBakedVehicle(id, model, texture) {
+        const paint = new THREE.MeshStandardMaterial({
+            map: texture,
+            roughness: 0.28,
+            metalness: 0.62,
+            side: THREE.DoubleSide,
+            envMapIntensity: 1.1
+        });
+        const rubber = new THREE.MeshStandardMaterial({
+            map: texture,
+            roughness: 0.9,
+            metalness: 0.04,
+            side: THREE.DoubleSide,
+            envMapIntensity: 0.55
+        });
+
+        const root = new THREE.Group();
+        root.name = `vehicle_${id}`;
+
+        if (model.body) {
+            const body = new THREE.Mesh(this.geometryFromBaked(model.body), paint);
+            body.name = 'baked_body';
+            body.castShadow = true;
+            body.receiveShadow = true;
+            root.add(body);
+        }
+
+        for (const wheel of model.wheels || []) {
+            const group = new THREE.Group();
+            group.name = wheel.name;
+            group.position.fromArray(wheel.pivot || [0, 0, 0]);
+
+            const mesh = new THREE.Mesh(this.geometryFromBaked(wheel.geometry), rubber);
+            mesh.name = 'baked_wheel';
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+            root.add(group);
+        }
+
+        const b = model.bounds || {};
+        return {
+            root,
+            dimensions: new THREE.Vector3(b.width || 2, b.height || 1.4, b.length || 4.5),
+            groundOffset: 0,
+            forward: new THREE.Vector3(0, 0, -1),
+            up: new THREE.Vector3(0, 1, 0),
+            right: new THREE.Vector3(1, 0, 0)
+        };
+    }
     
     async createVehicleMesh(id) {
         const modelData = await this.loadModelData(id);
         const texture = this.loadTexture(id);
-        
+
+        // Pre-baked APEX format: one merged body + four wheel geometries.
+        if (modelData && modelData.format === 'apex-vehicle-v1') {
+            return this.createBakedVehicle(id, modelData, texture);
+        }
+
         const rootGroup = new THREE.Group();
         rootGroup.name = `vehicle_${id}`;
         
