@@ -36,6 +36,8 @@ class ApexGame {
         this.raceManager = new RaceManager(this);
         this.garageUI = new GarageUI(this);
         this.audioEngine = new AudioEngine();
+        this.audioEngine.setWorld('neo_tazader');
+        this.audioEngine.setMode('MENU');
         
         this.currentScreen = 'MENU';
         this.currentWorldId = 'neo_tazader';
@@ -432,13 +434,31 @@ class ApexGame {
         const soundBtn = document.getElementById('btn-sound-toggle');
         if (soundBtn) {
             soundBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 this.toggleSound();
+            });
+        }
+        
+        const volUpBtn = document.getElementById('btn-volume-up');
+        if (volUpBtn) {
+            volUpBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
+                this.increaseVolume();
+            });
+        }
+        
+        const volDownBtn = document.getElementById('btn-volume-down');
+        if (volDownBtn) {
+            volDownBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
+                this.decreaseVolume();
             });
         }
         
         const freeroamBtn = document.getElementById('btn-freeroam');
         if (freeroamBtn) {
             freeroamBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 this.showScreen('GAME');
                 document.getElementById('race-banner').style.display = 'none';
                 this.placeCarAtSpawn();
@@ -448,6 +468,7 @@ class ApexGame {
         const garageBtn = document.getElementById('btn-garage');
         if (garageBtn) {
             garageBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 this.showScreen('GARAGE');
                 this.updateGarageDisplay();
             });
@@ -456,6 +477,7 @@ class ApexGame {
         const worldSelectBtn = document.getElementById('btn-world-select');
         if (worldSelectBtn) {
             worldSelectBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 document.getElementById('world-select-overlay').style.display = 'flex';
             });
         }
@@ -463,6 +485,7 @@ class ApexGame {
         const worldCloseBtn = document.getElementById('btn-world-close');
         if (worldCloseBtn) {
             worldCloseBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 document.getElementById('world-select-overlay').style.display = 'none';
             });
         }
@@ -477,12 +500,17 @@ class ApexGame {
                 await this.mapLoader.loadWorld(worldId);
                 this.updateMenuDisplay();
                 if (this.currentScreen === 'GAME') this.snapCarToTrack();
+                if (this.audioEngine) {
+                    this.audioEngine.setWorld(worldId);
+                    this.audioEngine.switchMusicTrack(worldId);
+                }
             });
         });
         
         const racesBtn = document.getElementById('btn-races');
         if (racesBtn) {
             racesBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 this.showScreen('GAME');
                 const event = this.mapLoader.events[0];
                 if (event) {
@@ -496,6 +524,7 @@ class ApexGame {
         const settingsBtn = document.getElementById('btn-settings');
         if (settingsBtn) {
             settingsBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 document.getElementById('settings-overlay').style.display = 'flex';
             });
         }
@@ -503,6 +532,7 @@ class ApexGame {
         const settingsCloseBtn = document.getElementById('btn-settings-close');
         if (settingsCloseBtn) {
             settingsCloseBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 document.getElementById('settings-overlay').style.display = 'none';
             });
         }
@@ -510,6 +540,7 @@ class ApexGame {
         // Traffic Density Buttons
         document.querySelectorAll('.setting-traffic-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 document.querySelectorAll('.setting-traffic-btn').forEach(b => b.classList.remove('pixel-btn-primary'));
                 btn.classList.add('pixel-btn-primary');
                 const density = btn.getAttribute('data-traffic');
@@ -517,9 +548,10 @@ class ApexGame {
             });
         });
         
-        // Time of Day
+        // Time of Day Buttons
         document.querySelectorAll('.setting-tod-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 document.querySelectorAll('.setting-tod-btn').forEach(b => b.classList.remove('pixel-btn-primary'));
                 btn.classList.add('pixel-btn-primary');
                 const tod = btn.getAttribute('data-tod');
@@ -530,6 +562,7 @@ class ApexGame {
         const garageCloseBtn = document.getElementById('btn-garage-close');
         if (garageCloseBtn) {
             garageCloseBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 this.showScreen('MENU');
             });
         }
@@ -563,6 +596,7 @@ class ApexGame {
         const pauseBtn = document.getElementById('btn-pause-menu');
         if (pauseBtn) {
             pauseBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 this.showScreen('MENU');
             });
         }
@@ -570,6 +604,7 @@ class ApexGame {
         const resContinueBtn = document.getElementById('btn-res-continue');
         if (resContinueBtn) {
             resContinueBtn.addEventListener('click', () => {
+                if (this.audioEngine) this.audioEngine.playButtonClick();
                 document.getElementById('results-overlay').style.display = 'none';
                 this.showScreen('GARAGE');
                 this.updateGarageDisplay();
@@ -696,8 +731,9 @@ class ApexGame {
             requestAnimationFrame(() => { warpOverlay.style.opacity = '1'; });
         }
 
-        if (this.audioEngine && typeof this.audioEngine.playImpact === 'function') {
+        if (this.audioEngine) {
             try { this.audioEngine.playImpact(8); } catch (_) {}
+            try { this.audioEngine.playSelection(); } catch (_) {}
         }
 
         // Maintain full forward cruising momentum through the warp
@@ -758,6 +794,7 @@ class ApexGame {
         this.currentScreen = screen;
         if (this.audioEngine) {
             this.audioEngine.setMode(screen);
+            this.audioEngine.setWorld(this.currentWorldId);
         }
         
         document.getElementById('main-menu-screen').classList.toggle('active', screen === 'MENU');
@@ -986,7 +1023,7 @@ class ApexGame {
             const speedKmh = Math.round(this.physics.speed / 0.27778);
             
             if (this.audioEngine) {
-                this.audioEngine.update(speedKmh, this.physics.isDrifting, this.physics.isNitroActive);
+                this.audioEngine.update(speedKmh, this.physics.isDrifting, this.physics.isNitroActive, this.physics.gear, this.physics.rpm);
             }
             
             // Canonical mesh placement: rotation.y is strictly physics.angle
