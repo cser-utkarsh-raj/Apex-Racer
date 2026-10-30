@@ -642,6 +642,80 @@ class ApexGame {
         if (text) text.innerText = isMuted ? 'AUDIO: MUTED [M]' : 'AUDIO: ON [M]';
     }
 
+    
+    async handleTrackEnd() {
+        if (this._isStageTransitioning) return;
+        this._isStageTransitioning = true;
+
+        const currentWorld = this.currentWorldId || 'neo_tazader';
+        const tour = ['neo_tazader', 'chiang_tung', 'curitiba', 'nantwich'];
+        const nextIdx = (tour.indexOf(currentWorld) + 1) % tour.length;
+        const nextWorld = tour[nextIdx];
+        
+        const worldLabels = {
+            neo_tazader: 'NEO-TAZADER DOWNTOWN',
+            chiang_tung: 'CHIANG TUNG PASS',
+            curitiba: 'CURITIBA COASTLINE',
+            nantwich: 'NANTWICH HIGHLANDS'
+        };
+        const nextLabel = worldLabels[nextWorld] || nextWorld.toUpperCase();
+
+        const warpOverlay = document.getElementById('warp-portal-overlay');
+        const warpStageTag = document.getElementById('warp-stage-tag');
+        const warpWorldName = document.getElementById('warp-world-name');
+
+        if (warpStageTag) warpStageTag.innerText = 'STAGE COMPLETE • HYPER WARP';
+        if (warpWorldName) warpWorldName.innerText = `NEXT: ${nextLabel}`;
+
+        if (warpOverlay) {
+            warpOverlay.style.display = 'flex';
+            requestAnimationFrame(() => { warpOverlay.style.opacity = '1'; });
+        }
+
+        if (this.audioEngine && typeof this.audioEngine.playImpact === 'function') {
+            try { this.audioEngine.playImpact(8); } catch (_) {}
+        }
+
+        // Maintain full forward cruising momentum through the warp
+        const preservedSpeed = Math.max(this.physics ? Math.abs(this.physics.speed) : 0, 52); // ~187 km/h
+
+        try {
+            await this.mapLoader.loadWorld(nextWorld);
+            this.currentWorldId = nextWorld;
+            this.updateMenuDisplay();
+
+            const spawn = this.mapLoader.getSpawnPoint();
+            if (this.physics) {
+                this.physics.x = spawn.x;
+                this.physics.y = spawn.y;
+                this.physics.z = spawn.z;
+                this.physics.angle = spawn.angle || 0;
+                this.physics.speed = preservedSpeed;
+                this.physics.vx = -Math.sin(this.physics.angle) * preservedSpeed;
+                this.physics.vz = -Math.cos(this.physics.angle) * preservedSpeed;
+            }
+            if (this.carMesh && this.physics) {
+                this.carMesh.position.set(this.physics.x, this.physics.y, this.physics.z);
+                this.carMesh.rotation.y = this.physics.angle;
+            }
+            this.snapCamera();
+            if (this.mapLoader.syncChunks) {
+                this.mapLoader.syncChunks(spawn.z, true);
+            }
+        } catch (err) {
+            console.error('World transition error:', err);
+        }
+
+        setTimeout(() => {
+            if (warpOverlay) {
+                warpOverlay.style.opacity = '0';
+                setTimeout(() => { warpOverlay.style.display = 'none'; }, 350);
+            }
+            this._isStageTransitioning = false;
+            if (this.world) this.world._stageTransitioning = false;
+        }, 700);
+    }
+
     showLapBanner() {
         this.currentLap = (this.currentLap || 1) + 1;
         const banner = document.getElementById('race-banner');

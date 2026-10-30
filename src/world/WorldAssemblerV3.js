@@ -332,6 +332,13 @@ export class WorldAssemblerV3 {
 
         const hedges = buildRoadsideHedges(this.route, this.style);
         if (hedges) this.worldGroup.add(hedges);
+
+        const portalGeo = buildTransitPortal(this.route, this.style);
+        if (portalGeo) {
+            const portal = new THREE.Mesh(portalGeo, this.lampMaterial);
+            portal.name = 'transit_portal_gate';
+            this.worldGroup.add(portal);
+        }
     }
 
     _buildWater() {
@@ -384,17 +391,16 @@ export class WorldAssemblerV3 {
         this.roads = this.route.segments(this.style.road.width, this.route.zMin, this.route.zMax, 96);
 
         const half = this.style.road.width / 2;
+        const roadCorridor = half + this.style.road.shoulder + 1.8;
         const buildings = [];
         for (const o of this.manifest.obstacles || []) {
             const c = this.route.atZ(o.z);
             const side = Math.sign(o.x - c.x) || 1;
-            // Real buildings may be baked right up to the asphalt. Push the
-            // collision box out to the kerb so the player never hits an
-            // invisible wall in the middle of the lane.
+            // Push collision box completely outside the drivable corridor, shoulder and guardrail
             const nearest = Math.abs(o.x - c.x) - o.rx;
             let x = o.x;
-            if (nearest < half + 1.4) {
-                x += side * ((half + 1.4) - nearest);
+            if (nearest < roadCorridor) {
+                x += side * (roadCorridor - nearest);
             }
             buildings.push({
                 x,
@@ -674,7 +680,8 @@ export class WorldAssemblerV3 {
         if (!physics || !this.route) return;
 
         const bounds = this.getRoadBounds(physics.z);
-        const limit = bounds.width / 2 + this.style.road.shoulder - 1.05;
+        // Visual rail is at width/2 + shoulder + 0.35. With car radius ~0.85, the center limit is:
+        const limit = bounds.width / 2 + this.style.road.shoulder - 0.45;
         const lateral = physics.x - bounds.centerX;
 
         if (Math.abs(lateral) <= limit) return;
@@ -689,17 +696,21 @@ export class WorldAssemblerV3 {
         const nz = -s.dx / len;
         const vn = physics.vx * nx + physics.vz * nz;
 
-        // Elastic response along the rail normal.
+        // Bounce only the lateral velocity component off the rail
         if (vn * side > 0) {
-            physics.vx -= 1.7 * vn * nx;
-            physics.vz -= 1.7 * vn * nz;
-            physics.speed *= 0.55;
+            physics.vx -= 1.35 * vn * nx;
+            physics.vz -= 1.35 * vn * nz;
+            // Smooth wall-grind friction instead of coming to a dead stop
+            physics.speed *= 0.97;
+            // Align car heading with road ribbon so the car smoothly slides along the rail
+            const roadHeading = this.route.headingAt(physics.z);
+            physics.angle = THREE.MathUtils.lerp(physics.angle, roadHeading, 0.12);
         }
 
         if (this._impactCooldown <= 0 && Math.abs(physics.speed) > 4) {
             this._impactCooldown = 0.35;
             if (this.game.audioEngine && typeof this.game.audioEngine.playImpact === 'function') {
-                this.game.audioEngine.playImpact(12);
+                this.game.audioEngine.playImpact(Math.min(16, Math.abs(physics.speed)));
             }
         }
     }
@@ -716,28 +727,23 @@ export class WorldAssemblerV3 {
             physics.vz = Math.min(0, physics.vz);
             if (physics.speed < 0) physics.speed = 0;
             physics.y = this.getTrackHeight(physics.x, physics.z);
-        } else if (physics.z < zMin) {
-            // Seamless Highway Loop: Wrap continuously back to track start!
-            const lateralOffset = physics.x - this.getRoadBounds(physics.z).centerX;
-            const newZ = this.route.zMax - 18;
-            const newBounds = this.getRoadBounds(newZ);
+        } else if (physics.z < zMin + 14) {
+            // Checkpoint reached: trigger seamless world tour progression or smooth warp
+            if (this.game && typeof this.game.handleTrackEnd === 'function') {
+                if (!this._stageTransitioning) {
+                    this._stageTransitioning = true;
+                    this.game.handleTrackEnd();
+                }
+            } else {
+                // Standalone fallback wrap
+                const lateralOffset = physics.x - this.getRoadBounds(physics.z).centerX;
+                const newZ = this.route.zMax - 18;
+                const newBounds = this.getRoadBounds(newZ);
 
-            physics.z = newZ;
-            physics.x = newBounds.centerX + lateralOffset;
-            physics.y = this.getTrackHeight(physics.x, physics.z);
-            physics.angle = this.route.headingAt(newZ);
-
-            if (this.game) {
-                if (this.game.carMesh) {
-                    this.game.carMesh.position.set(physics.x, physics.y, physics.z);
-                    this.game.carMesh.rotation.y = physics.angle;
-                }
-                if (typeof this.game.snapCamera === 'function') {
-                    this.game.snapCamera();
-                }
-                if (typeof this.game.showLapBanner === 'function') {
-                    this.game.showLapBanner();
-                }
+                physics.z = newZ;
+                physics.x = newBounds.centerX + lateralOffset;
+                physics.y = this.getTrackHeight(physics.x, physics.z);
+                physics.angle = this.route.headingAt(newZ);
             }
         }
 
@@ -747,10 +753,6 @@ export class WorldAssemblerV3 {
             physics.x = this.getRoadBounds(physics.z).centerX + Math.sign(lat) * hard;
         }
     }
-
-    /* ------------------------------------------------------------------ */
-    /* Synchronous world queries                                          */
-    /* ------------------------------------------------------------------ */
 
     getRoadBounds(z) {
         if (!this.route) {

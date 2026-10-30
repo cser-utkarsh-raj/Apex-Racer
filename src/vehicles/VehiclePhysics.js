@@ -170,7 +170,7 @@ export class VehiclePhysics {
     resolveCollisions() {
         if (!this.game.mapLoader || !this.game.mapLoader.buildings) return;
         const buildings = this.game.mapLoader.buildings;
-        const carRadius = 1.2;
+        const carRadius = 1.0;
         
         for (let i = 0; i < buildings.length; i++) {
             const b = buildings[i];
@@ -182,14 +182,22 @@ export class VehiclePhysics {
             const overlapZ = (b.r_z + carRadius) - Math.abs(dz);
             
             if (overlapX > 0 && overlapZ > 0) {
-                if (overlapX < overlapZ) {
-                    this.x += Math.sign(dx) * overlapX;
-                } else {
+                // Roadside obstacles: deflect laterally back toward the road corridor
+                // Never clamp in Z while traveling along the highway, which causes invisible dead-stops.
+                this.x += Math.sign(dx) * overlapX;
+
+                // Only resolve Z if heading directly perpendicular into the wall
+                const movingTowardBox = (this.vz > 0 && dz < 0) || (this.vz < 0 && dz > 0);
+                if (overlapZ < overlapX * 0.25 && movingTowardBox) {
                     this.z += Math.sign(dz) * overlapZ;
+                    this.speed *= 0.8;
+                } else {
+                    // Glancing slide along the building
+                    this.speed *= 0.96;
                 }
-                this.speed *= 0.55;
-                if (this.game.audioEngine) {
-                    this.game.audioEngine.playImpact(15);
+
+                if (this.game.audioEngine && typeof this.game.audioEngine.playImpact === 'function') {
+                    this.game.audioEngine.playImpact(10);
                 }
                 break;
             }

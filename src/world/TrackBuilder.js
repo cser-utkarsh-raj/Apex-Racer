@@ -302,3 +302,61 @@ function makeGeometry(pos, col, normal) {
     geo.computeBoundingSphere();
     return geo;
 }
+
+
+/**
+ * Illuminated Hyper-Transit Checkpoint Portal placed near the end of the route.
+ * Signals to the driver that they are entering the stage transition warp gate.
+ */
+export function buildTransitPortal(route, style) {
+    const road = style.road;
+    const z = route.zMin + 24;
+    const s = route.atZ(z);
+    const half = road.width / 2;
+    const offset = half + road.shoulder + 0.9;
+    const pos = [], col = [];
+    const cyan = new THREE.Color(0x00ffcc);
+    const darkMetal = new THREE.Color(0x1a2233);
+    const neonPink = new THREE.Color(0xff0066);
+
+    const box = (cx, cy, cz, sx, sy, sz, c) => {
+        const x0 = cx - sx / 2, x1 = cx + sx / 2;
+        const y0 = cy - sy / 2, y1 = cy + sy / 2;
+        const z0 = cz - sz / 2, z1 = cz + sz / 2;
+        const faces = [
+            [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]],
+            [[x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]],
+            [[x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]],
+            [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]],
+            [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]],
+            [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]]
+        ];
+        for (const [a, b, c2, d] of faces) {
+            pos.push(...a, ...b, ...c2, ...a, ...c2, ...d);
+            for (let i = 0; i < 6; i++) col.push(c.r, c.g, c.b);
+        }
+    };
+
+    // 1. Vertical support pylons
+    for (const side of [-1, 1]) {
+        const px = s.x + side * offset;
+        box(px, s.y + 4.5, z, 1.2, 9.0, 1.2, darkMetal);
+        // Vertical neon emission strips
+        box(px - side * 0.55, s.y + 4.5, z, 0.2, 8.4, 0.4, cyan);
+    }
+
+    // 2. Overhead arch beam
+    const archWidth = offset * 2 + 1.2;
+    box(s.x, s.y + 8.6, z, archWidth, 1.2, 1.4, darkMetal);
+    // Glowing neon sign bands
+    box(s.x, s.y + 8.6, z + 0.72, archWidth * 0.9, 0.4, 0.1, cyan);
+    box(s.x, s.y + 9.2, z, 8.0, 0.35, 1.45, neonPink);
+
+    // 3. Ground checkpoint threshold chevrons across asphalt
+    for (let x = -half; x <= half; x += 1.8) {
+        const c = Math.floor((x + half) / 1.8) % 2 === 0 ? cyan : neonPink;
+        box(s.x + x, s.y + 0.04, z, 1.4, 0.02, 0.8, c);
+    }
+
+    return makeGeometry(pos, col, null);
+}

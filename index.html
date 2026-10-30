@@ -724,6 +724,13 @@
                 display: none;
             }
         }
+    
+        @keyframes warpPulse {
+            0% { transform: scale(0.98); opacity: 0.6; }
+            50% { transform: scale(1.04); opacity: 1; }
+            100% { transform: scale(0.98); opacity: 0.6; }
+        }
+    
     </style>
 </head>
 <body>
@@ -768,12 +775,12 @@
             <!-- Left: Primary Menu Actions -->
             <div class="menu-options" style="margin-top: 0;">
                 <button id="btn-freeroam" class="pixel-btn pixel-btn-primary" style="font-size: 13px; padding: 18px 24px; box-shadow: 0 0 24px rgba(0, 255, 204, 0.45);">
-                    ⚡ FREE ROAM [ENTER]
+                    FREE ROAM [ENTER]
                 </button>
-                <button id="btn-garage" class="pixel-btn">🏎️ GARAGE & CARS [G]</button>
-                <button id="btn-world-select" class="pixel-btn">🌍 SELECT WORLD [W]</button>
-                <button id="btn-races" class="pixel-btn pixel-btn-accent">🏆 CIRCUIT RACES</button>
-                <button id="btn-settings" class="pixel-btn">⚙️ SETTINGS</button>
+                <button id="btn-garage" class="pixel-btn">GARAGE & CARS [G]</button>
+                <button id="btn-world-select" class="pixel-btn">SELECT WORLD [W]</button>
+                <button id="btn-races" class="pixel-btn pixel-btn-accent">CIRCUIT RACES</button>
+                <button id="btn-settings" class="pixel-btn">SETTINGS</button>
             </div>
 
             <!-- Right: Live Active Setup Card -->
@@ -858,6 +865,17 @@
             3
         </div>
 
+        
+        <!-- Hyper-Drive Warp Portal Overlay -->
+        <div id="warp-portal-overlay" style="position: absolute; inset: 0; pointer-events: none; z-index: 100; opacity: 0; display: none; transition: opacity 0.3s ease; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at center, rgba(0,255,204,0.18) 0%, rgba(18,26,44,0.88) 60%, rgba(6,10,18,0.98) 100%);">
+            <div id="warp-speed-lines" style="position: absolute; inset: 0; background: repeating-radial-gradient(circle, transparent 0, transparent 40px, rgba(0,255,204,0.12) 41px, transparent 44px); animation: warpPulse 0.4s infinite linear;"></div>
+            <div style="position: relative; text-align: center;">
+                <div id="warp-stage-tag" style="font-size: 13px; color: var(--primary); letter-spacing: 4px; font-weight: bold; text-shadow: 0 0 16px rgba(0,255,204,0.8);">STAGE COMPLETE • HYPER WARP</div>
+                <div id="warp-world-name" style="font-size: 26px; color: #fff; font-weight: 900; letter-spacing: 2px; margin-top: 10px; text-shadow: 0 0 24px rgba(255,255,255,0.7);">NEXT: CHIANG TUNG HIGHLANDS</div>
+                <div style="font-size: 9px; color: var(--gold); letter-spacing: 2px; margin-top: 12px; font-weight: bold;">HYPER-TRANSIT VELOCITY MAINTAINED</div>
+            </div>
+        </div>
+    
         <div class="hud-top-bar">
             <div id="hud-minimap-wrap">
                 <canvas id="minimap-canvas" width="140" height="140"></canvas>
