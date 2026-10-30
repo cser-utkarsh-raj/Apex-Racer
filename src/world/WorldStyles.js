@@ -6,8 +6,8 @@
 export const WORLD_STYLES = {
     neo_tazader: {
         id: 'neo_tazader',
-        label: 'NEO-TAZADER',
-        raceName: 'NEO-TAZADER MIDNIGHT CIRCUIT',
+        label: 'NEO CITY',
+        raceName: 'NEO CITY MIDNIGHT CIRCUIT',
         night: true,
         sky: {
             top: '#03050c', horizon: '#182238', ground: '#04050a', stars: 1.0,
@@ -41,8 +41,8 @@ export const WORLD_STYLES = {
 
     chiang_tung: {
         id: 'chiang_tung',
-        label: 'CHIANG TUNG',
-        raceName: 'CHIANG TUNG MOUNTAIN TOUGE',
+        label: 'MOUNTAIN PASS',
+        raceName: 'MOUNTAIN PASS TOUGE',
         night: false,
         sky: {
             top: '#2f6fae', horizon: '#cfdbe0', ground: '#5e5843', stars: 0,
@@ -75,7 +75,7 @@ export const WORLD_STYLES = {
 
     curitiba: {
         id: 'curitiba',
-        label: 'CURITIBA',
+        label: 'COASTAL HIGHWAY',
         raceName: 'CURITIBA AVENIDA SPRINT',
         night: false,
         sky: {
@@ -109,7 +109,7 @@ export const WORLD_STYLES = {
 
     nantwich: {
         id: 'nantwich',
-        label: 'NANTWICH',
+        label: 'COUNTRYSIDE',
         raceName: 'NANTWICH VILLAGE RALLY',
         night: false,
         sky: {
@@ -143,6 +143,18 @@ export const WORLD_STYLES = {
 };
 
 export const WORLD_ALIASES = {
+    neo_city: 'neo_tazader',
+    'neo-city': 'neo_tazader',
+    cyber_city: 'neo_tazader',
+    mountain_pass: 'chiang_tung',
+    'mountain-pass': 'chiang_tung',
+    mountain: 'chiang_tung',
+    coastal_highway: 'curitiba',
+    'coastal-highway': 'curitiba',
+    coastal: 'curitiba',
+    coast: 'curitiba',
+    countryside: 'nantwich',
+    country: 'nantwich',
     neo: 'neo_tazader',
     tazader: 'neo_tazader',
     greater_kc: 'neo_tazader',

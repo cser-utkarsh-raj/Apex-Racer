@@ -424,6 +424,11 @@ class ApexGame {
     }
     
     setupUI() {
+        const camBtn = document.getElementById('btn-camera-toggle');
+        if (camBtn) {
+            camBtn.addEventListener('click', () => this.cycleCamera());
+        }
+        
         const soundBtn = document.getElementById('btn-sound-toggle');
         if (soundBtn) {
             soundBtn.addEventListener('click', () => {
@@ -643,7 +648,22 @@ class ApexGame {
     }
 
     
-    async handleTrackEnd() {
+    async 
+    cycleCamera() {
+        this.cameraMode = ((this.cameraMode || 0) + 1) % 3;
+        const labels = ['CHASE (DYNAMIC)', 'HOOD (POV)', 'FAR (CINEMATIC)'];
+        const pill = document.getElementById('hud-camera-pill');
+        if (pill) {
+            pill.innerText = `CAMERA: ${labels[this.cameraMode]}`;
+            pill.style.opacity = '1';
+            clearTimeout(this._cameraPillTimeout);
+            this._cameraPillTimeout = setTimeout(() => {
+                pill.style.opacity = '0';
+            }, 1400);
+        }
+    }
+
+    handleTrackEnd() {
         if (this._isStageTransitioning) return;
         this._isStageTransitioning = true;
 
@@ -653,11 +673,15 @@ class ApexGame {
         const nextWorld = tour[nextIdx];
         
         const worldLabels = {
-            neo_tazader: 'NEO-TAZADER DOWNTOWN',
-            chiang_tung: 'CHIANG TUNG PASS',
-            curitiba: 'CURITIBA COASTLINE',
-            nantwich: 'NANTWICH HIGHLANDS'
-        };
+                neo_tazader: 'NEO CITY',
+                chiang_tung: 'MOUNTAIN PASS',
+                curitiba: 'COASTAL HIGHWAY',
+                nantwich: 'COUNTRYSIDE',
+                neo_city: 'NEO CITY',
+                mountain_pass: 'MOUNTAIN PASS',
+                coastal_highway: 'COASTAL HIGHWAY',
+                countryside: 'COUNTRYSIDE'
+            };
         const nextLabel = worldLabels[nextWorld] || nextWorld.toUpperCase();
 
         const warpOverlay = document.getElementById('warp-portal-overlay');
@@ -993,37 +1017,57 @@ class ApexGame {
             this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, delta * 8.0);
             this.camera.updateProjectionMatrix();
             
-            // Canonical Chase Camera (Sits behind along +Z relative to angle, looks ahead toward -Z)
+            // Multi-Angle Camera System (0: Chase, 1: Hood POV, 2: Far Cinematic)
             const forwardX = -Math.sin(this.physics.angle);
             const forwardZ = -Math.cos(this.physics.angle);
             const rightX = -forwardZ;
             const rightZ = forwardX;
             const speedFactor = Math.min(1, speedKmh / 320);
-            const camHeight = 1.95 + speedFactor * 0.3;
-            const camDist = 5.6 + speedFactor * 1.6;
-            const sway = -this.physics.steerInput * (0.28 + speedFactor * 0.7);
+            
+            const mode = this.cameraMode || 0;
+            let camHeight = 1.95 + speedFactor * 0.3;
+            let camDist = 5.6 + speedFactor * 1.6;
+            let lookAheadDist = 12.0;
+            let lookYOffset = 0.95;
+            let sway = -this.physics.steerInput * (0.28 + speedFactor * 0.7);
+            let posLerpK = 1 - Math.exp(-delta * 11.0);
+            let yLerpK = 1 - Math.exp(-delta * 7.5);
+
+            if (mode === 1) {
+                // Hood / Bumper POV
+                camHeight = 0.82;
+                camDist = -0.45;
+                lookAheadDist = 22.0;
+                lookYOffset = 0.75;
+                sway = 0;
+                posLerpK = 1 - Math.exp(-delta * 26.0);
+                yLerpK = 1 - Math.exp(-delta * 20.0);
+            } else if (mode === 2) {
+                // Far Cinematic Chase
+                camHeight = 3.6 + speedFactor * 0.5;
+                camDist = 9.2 + speedFactor * 2.2;
+                lookAheadDist = 14.0;
+                lookYOffset = 1.1;
+                sway = -this.physics.steerInput * 0.45;
+            }
             
             const targetCamX = this.physics.x - forwardX * camDist + rightX * sway;
             const targetCamZ = this.physics.z - forwardZ * camDist + rightZ * sway;
             const targetCamY = this.physics.y + camHeight;
             
-            const posK = 1 - Math.exp(-delta * 11.0);
-            const yK = 1 - Math.exp(-delta * 7.5);
-            this.camera.position.x += (targetCamX - this.camera.position.x) * posK;
-            this.camera.position.z += (targetCamZ - this.camera.position.z) * posK;
-            this.camera.position.y += (targetCamY - this.camera.position.y) * yK;
+            this.camera.position.x += (targetCamX - this.camera.position.x) * posLerpK;
+            this.camera.position.z += (targetCamZ - this.camera.position.z) * posLerpK;
+            this.camera.position.y += (targetCamY - this.camera.position.y) * yLerpK;
             
             const lookTarget = new THREE.Vector3(
-                this.physics.x + forwardX * 12.0 + rightX * this.physics.steerInput * 1.4,
-                this.physics.y + 0.95,
-                this.physics.z + forwardZ * 12.0 + rightZ * this.physics.steerInput * 1.4
+                this.physics.x + forwardX * lookAheadDist + rightX * this.physics.steerInput * (mode === 1 ? 0.3 : 1.4),
+                this.physics.y + lookYOffset,
+                this.physics.z + forwardZ * lookAheadDist + rightZ * this.physics.steerInput * (mode === 1 ? 0.3 : 1.4)
             );
             this.camera.up.set(0, 1, 0);
             this.camera.lookAt(lookTarget);
             
-            // Subtle chassis roll so corners feel loaded without making the
-            // player seasick on straights.
-            const targetRoll = -this.physics.steerInput * speedFactor * 0.045;
+            const targetRoll = -this.physics.steerInput * speedFactor * (mode === 1 ? 0.02 : 0.045);
             this._camRoll = (this._camRoll || 0) + (targetRoll - (this._camRoll || 0)) * (1 - Math.exp(-delta * 5.0));
             this.camera.rotateZ(this._camRoll);
             

@@ -889,13 +889,18 @@
                 </div>
             </div>
 
-            <button id="btn-pause-menu" class="pixel-btn">MENU</button>
+            <div style="display: flex; gap: 8px;">
+                <button id="btn-camera-toggle" class="pixel-btn" style="padding: 8px 14px; font-size: 9px;">CAM [C]</button>
+                <button id="btn-pause-menu" class="pixel-btn">MENU</button>
+            </div>
         </div>
 
+        <div id="hud-camera-pill" style="position: absolute; top: 76px; left: 50%; transform: translateX(-50%); background: rgba(16, 22, 34, 0.92); border: 1px solid var(--primary); color: #fff; padding: 6px 16px; font-size: 9px; letter-spacing: 2px; border-radius: 4px; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; z-index: 95; font-weight: bold;">CAMERA: CHASE</div>
         <div id="hud-telemetry" class="pixel-card">
             <div id="hud-gear" style="font-size: 10px; color: var(--primary); margin-bottom: 2px;">D 1</div>
             <div id="hud-speed">0</div>
             <div style="font-size: 8px; color: var(--text-muted); margin-top: 2px;">KM/H</div>
+            <div id="hud-distance" style="font-size: 8.5px; color: var(--gold); margin-top: 6px; letter-spacing: 0.5px; font-weight: bold;">TRIP: 0.00 KM</div>
             <div style="height: 6px; width: 130px; background: #000; border: 1px solid #333; margin-top: 6px;">
                 <div id="hud-rpm-fill" style="height: 100%; width: 0%; background: var(--secondary);"></div>
             </div>
@@ -911,36 +916,36 @@
             <div class="world-grid">
                 <!-- Neo-Tazader -->
                 <div class="world-card active-world world-pick-btn" data-world="neo_tazader">
-                    <img class="world-thumb" src="assets/images/world_neo_tazader.jpg" alt="Neo-Tazader">
+                    <img class="world-thumb" src="assets/images/world_neo_city.jpg" alt="Neo-Tazader">
                     <div class="world-info">
-                        <div class="world-name">1. NEO-TAZADER METROPOLIS</div>
+                        <div class="world-name">1. NEO CITY</div>
                         <div class="world-desc">Illuminated Skyscrapers, 4-lane Highway & 2.0km Drag Strip</div>
                     </div>
                 </div>
 
                 <!-- Curitiba -->
                 <div class="world-card world-pick-btn" data-world="curitiba">
-                    <img class="world-thumb" src="assets/images/world_curitiba.jpg" alt="Curitiba">
+                    <img class="world-thumb" src="assets/images/world_coastal_highway.jpg" alt="Curitiba">
                     <div class="world-info">
-                        <div class="world-name">2. CURITIBA TRANSIT CITY</div>
+                        <div class="world-name">2. COASTAL HIGHWAY</div>
                         <div class="world-desc">Urban Boulevards, City Overpasses & Dedicated Bus Corridors</div>
                     </div>
                 </div>
 
                 <!-- Nantwich -->
                 <div class="world-card world-pick-btn" data-world="nantwich">
-                    <img class="world-thumb" src="assets/images/world_nantwich.jpg" alt="Nantwich">
+                    <img class="world-thumb" src="assets/images/world_countryside.jpg" alt="Nantwich">
                     <div class="world-info">
-                        <div class="world-name">3. NANTWICH COUNTRYSIDE</div>
+                        <div class="world-name">3. COUNTRYSIDE</div>
                         <div class="world-desc">Narrow English Touge, Rolling Grass Hills & Brick Cottages</div>
                     </div>
                 </div>
 
                 <!-- Chiang Tung -->
                 <div class="world-card world-pick-btn" data-world="chiang_tung">
-                    <img class="world-thumb" src="assets/images/world_chiang_tung.jpg" alt="Chiang Tung">
+                    <img class="world-thumb" src="assets/images/world_mountain_pass.jpg" alt="Chiang Tung">
                     <div class="world-info">
-                        <div class="world-name">4. CHIANG TUNG MOUNTAIN</div>
+                        <div class="world-name">4. MOUNTAIN PASS</div>
                         <div class="world-desc">Cliffside Hairpins, Misty Forest Touge & Drift Elevations</div>
                     </div>
                 </div>

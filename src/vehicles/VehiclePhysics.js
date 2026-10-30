@@ -116,26 +116,25 @@ export class VehiclePhysics {
         // Visual wheel steer (capped smaller for visual fidelity)
         this.steerAngle = this.steerInput * 0.35;
         
-        // 3. Stable Yaw Rate Calculation
+        // 3. Stable Progressive Yaw Rate & Stationary Pivot
         const isHandbrake = controls.handbrake && speedKmh > 20;
         this.isDrifting = isHandbrake;
         
-        if (Math.abs(this.speed) > 0.3) {
-            // Speed curve: gentle at very low speed, peaks at ~50 km/h, progressively tapers at highway speeds
-            const normalizedSpeed = Math.min(speedKmh / 45.0, 1.0);
-            const highSpeedTaper = Math.max(0.28, 1.0 - Math.pow(Math.max(0, speedKmh - 75) / 240, 1.1));
-            
-            // Base turn rate scaled by vehicle handling spec
-            const baseTurnRate = 0.72 * (this.specs.handling || 1.0);
-            let yawRate = this.steerInput * baseTurnRate * normalizedSpeed * highSpeedTaper * Math.sign(this.speed);
-            
-            if (this.isDrifting) {
-                yawRate *= 1.35;
+        const baseTurnRate = 1.15 * (this.specs.handling || 1.0);
+        
+        if (Math.abs(this.speed) < 1.2) {
+            // Low speed or stopped: allow pivoting car when throttle or brake/reverse is pressed
+            if (controls.throttle || controls.brake) {
+                const dir = (controls.brake && this.speed <= 0.1) ? -1 : 1;
+                const pivotRate = this.steerInput * baseTurnRate * 0.85 * dir;
+                this.angle += THREE.MathUtils.clamp(pivotRate, -0.85, 0.85) * delta;
             }
-            
-            // Absolute safety cap
-            yawRate = THREE.MathUtils.clamp(yawRate, -0.85, 0.85);
-            
+        } else {
+            const normalizedSpeed = Math.min(speedKmh / 40.0, 1.0);
+            const highSpeedTaper = Math.max(0.35, 1.0 - Math.pow(Math.max(0, speedKmh - 75) / 260, 1.1));
+            let yawRate = this.steerInput * baseTurnRate * normalizedSpeed * highSpeedTaper * Math.sign(this.speed);
+            if (this.isDrifting) yawRate *= 1.4;
+            yawRate = THREE.MathUtils.clamp(yawRate, -0.95, 0.95);
             this.angle += yawRate * delta;
         }
         
