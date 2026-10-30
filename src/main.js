@@ -663,7 +663,7 @@ class ApexGame {
         }
     }
 
-    handleTrackEnd() {
+    async handleTrackEnd() {
         if (this._isStageTransitioning) return;
         this._isStageTransitioning = true;
 
